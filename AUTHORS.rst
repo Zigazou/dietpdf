@@ -2,4 +2,4 @@
 Contributors
 ============
 
-* Frédéric BISSON <zigazou@free.fr>
+* Frédéric BISSON <zigazou@protonmail.com>
