@@ -11,7 +11,14 @@ class PDFName(PDFItem):
     """A PDF name (starting with /)"""
 
     def __init__(self, name: bytes):
-        self.name = name
+        assert type(name) in [PDFName, str, bytes]
+
+        if isinstance(name, PDFName):
+            self.name = name.name
+        elif isinstance(name, str):
+            self.name = name.encode('ascii')
+        else:
+            self.name = name
 
     def __hash__(self) -> int:
         return hash(self.name)

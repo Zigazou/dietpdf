@@ -14,6 +14,8 @@ from ..item import (
     PDFComment,
 )
 
+from ..pdf import PDF
+
 _logger = getLogger("PDFProcessor")
 
 class PDFProcessor:
@@ -24,27 +26,26 @@ class PDFProcessor:
     """
 
     def __init__(self):
-        self.stack = []
-        self.objects = {}
+        self.pdf = PDF()
 
     def _generate_reference(self):
-        gen_num = int(self.stack.pop().value)
-        obj_num = int(self.stack.pop().value)
-        self.stack.append(PDFReference(obj_num, gen_num))
+        gen_num = int(self.pdf.pop().value)
+        obj_num = int(self.pdf.pop().value)
+        self.pdf.push(PDFReference(obj_num, gen_num))
 
     def _generate_object_id(self):
-        gen_num = int(self.stack.pop().value)
-        obj_num = int(self.stack.pop().value)
-        self.stack.append(PDFObjectID(obj_num, gen_num))
+        gen_num = int(self.pdf.pop().value)
+        obj_num = int(self.pdf.pop().value)
+        self.pdf.push(PDFObjectID(obj_num, gen_num))
 
     def _generate_list(self):
         items = []
-        while len(self.stack) > 0:
-            current = self.stack.pop()
+        while self.pdf.stack_size() > 0:
+            current = self.pdf.pop()
 
             if isinstance(current, PDFListOpen):
                 items.reverse()
-                self.stack.append(PDFList(items))
+                self.pdf.push(PDFList(items))
                 return
 
             items.append(current)
@@ -52,34 +53,33 @@ class PDFProcessor:
     def _generate_dict(self):
         key_values = {}
 
-        while len(self.stack) > 0:
-            value = self.stack.pop()
+        while self.pdf.stack_size() > 0:
+            value = self.pdf.pop()
 
             if isinstance(value, PDFDictOpen):
-                self.stack.append(PDFDictionary(key_values))
+                self.pdf.push(PDFDictionary(key_values))
                 return
 
-            key = self.stack.pop()
+            key = self.pdf.pop()
             key_values[key] = value
 
     def _generate_object(self):
-        stream = self.stack.pop()
+        stream = self.pdf.pop()
 
         if isinstance(stream, PDFStream):
-            value = self.stack.pop()
+            value = self.pdf.pop()
         else:
             value = stream
             stream = None
 
-        object_id = self.stack.pop()
+        object_id = self.pdf.pop()
         object = PDFObject(object_id.obj_num, object_id.gen_num, value, stream)
-        self.objects[object.obj_num] = object
-        self.stack.append(object)
+        self.pdf.push(object)
 
     def _find_command(self, command: bytes, start: int) -> int:
         offset = start
-        while offset < len(self.stack):
-            item = self.stack[offset]
+        while offset < self.pdf.stack_size():
+            item = self.pdf.stack[offset]
             if isinstance(item, PDFCommand) and item.command == command:
                 return offset
 
@@ -87,27 +87,18 @@ class PDFProcessor:
 
         return -1
 
-    def _find_by_type(self, item_type: str, start: int) -> int:
-        offset = start
-        while offset < len(self.stack):
-            if self.stack[offset].__class__.__name__ == item_type:
-                return offset
-
-            offset += 1
-
-        return -1
-
     def _convert_startxref(self):
-        offset = self._find_command(b"startxref", 0)
-        while offset != -1:
-            self.stack.pop(offset)
-            self.stack.insert(
+        any_startxref_command = lambda _, item: (
+            type(item) == PDFCommand and
+            item.command == b"startxref"
+        )
+
+        for offset, startxref in self.pdf.find(any_startxref_command):
+            self.pdf.pop(offset)
+            self.pdf.insert(
                 offset,
                 PDFStartXref(self.stack.pop(offset).value)
             )
-
-            # Next startxref
-            offset = self._find_command(b"startxref", offset + 1)
 
     def _convert_xref(self):
         offset = self._find_command(b"xref", 0)
@@ -173,11 +164,13 @@ class PDFProcessor:
         pdf = self.encode()
 
         # Changing offsets in an XREF table won't change its size
-        offset = self._find_by_type("PDFXref", 0)
-        xref = None
-        while offset != -1:
-            xref = self.stack[offset]
+        any_xref_table = lambda _, item: type(item) == PDFXref
+        xrefs = self.pdf.find_all(any_xref_table)
 
+        any_startxref = lambda _, item: type(item) == PDFStartXref
+        startxrefs = self.pdf.find_all(any_startxref)
+
+        for xref in xrefs:
             for subsection in xref.subsections:
                 base = subsection.base
                 count = subsection.count
@@ -194,42 +187,46 @@ class PDFProcessor:
                         ref_type
                     )
 
-            # Next XREF table
-            offset = self._find_by_type("PDFXref", offset + 1)
-
         # Update last startxref item
-        offset = self._find_by_type("PDFXref", 0)
-        if offset != -1:
-            self.stack[-2].offset = self.stack[offset].item_offset
+        if xrefs and startxrefs:
+            startxrefs[-1].offset = xrefs[0].item_offset
 
         # Update the first object if it contains linearization information
-        if isinstance(self.stack[1].value, PDFDictionary):
-            items = self.stack[1].value.items
-            if b"Linearized" in items:
-                # Update file length
-                items[PDFName(b"L")] = PDFNumber(str(len(pdf)).encode('ascii'))
+        any_linearized = lambda _, item: (
+            type(item) == PDFObject and
+            type(item.value) == PDFDictionary and
+            b"Linearized" in item.value
+        )
 
-                # Update offset of end of first page
-                old_end = items[PDFName(b"E")].value
-                object_id = int(original[old_end:old_end + 10].split()[0])
-                items[PDFName(b"E")] = PDFNumber(
-                    str(self.objects[object_id].item_offset).encode('ascii')
+        linearized = self.pdf.find_first(any_linearized)
+        if linearized:
+            items = linearized.value
+
+            # Update file length
+            linearized.value[b"L"] = PDFNumber(str(len(pdf)).encode('ascii'))
+
+            # Update offset of end of first page
+            old_end = int(linearized.value[b"E"])
+            object_id = int(original[old_end:old_end + 10].split()[0])
+
+            linearized.value[b"E"] = PDFNumber(
+                str(self.pdf.get(object_id).item_offset).encode('ascii')
+            )
+
+            # Update offset of first entry in main xref table
+            if xrefs:
+                linearized.value[b"T"] = PDFNumber(
+                    str(xrefs[0].item_offset +
+                        xrefs[0].first_entry_offset).encode('ascii')
                 )
-
-                # Update offset of first entry in main xref table
-                if xref != None:
-                    items[PDFName(b"T")] = PDFNumber(
-                        str(xref.item_offset +
-                            xref.first_entry_offset).encode('ascii')
-                    )
 
         # Update first trailer
-        offset = self._find_by_type("PDFTrailer", 0)
-        if offset != -1:
-            if xref != None:
-                self.stack[offset].dictionary.items[PDFName(b"Prev")] = (
-                    PDFNumber(str(xref.item_offset).encode('ascii'))
-                )
+        any_trailer = lambda _, item: type(item) == PDFTrailer
+        trailer = self.pdf.find_first(any_trailer)
+        if trailer and xrefs:
+            trailer.dictionary[b"Prev"] = (
+                PDFNumber(str(xrefs[0].item_offset).encode('ascii'))
+            )
 
     def encode(self) -> bytes:
         """Encode a PDF from the current state of the processor"""
