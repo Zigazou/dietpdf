@@ -76,64 +76,55 @@ class PDFProcessor:
         object = PDFObject(object_id.obj_num, object_id.gen_num, value, stream)
         self.pdf.push(object)
 
-    def _find_command(self, command: bytes, start: int) -> int:
-        offset = start
-        while offset < self.pdf.stack_size():
-            item = self.pdf.stack[offset]
-            if isinstance(item, PDFCommand) and item.command == command:
-                return offset
-
-            offset += 1
-
-        return -1
-
     def _convert_startxref(self):
         any_startxref_command = lambda _, item: (
             type(item) == PDFCommand and
             item.command == b"startxref"
         )
 
-        for offset, startxref in self.pdf.find(any_startxref_command):
+        for offset, _ in self.pdf.find(any_startxref_command):
             self.pdf.pop(offset)
             self.pdf.insert(
                 offset,
-                PDFStartXref(self.stack.pop(offset).value)
+                PDFStartXref(self.pdf.pop(offset).value)
             )
 
     def _convert_xref(self):
-        offset = self._find_command(b"xref", 0)
-        while offset != -1:
-            self.stack.pop(offset)
+        any_xref_command = lambda _, item: (
+            type(item) == PDFCommand and
+            item.command == b"xref"
+        )
+
+        for offset, _ in self.pdf.find(any_xref_command):
+            self.pdf.pop(offset)
 
             xref = PDFXref()
 
-            while isinstance(self.stack[offset], PDFNumber):
-                base = self.stack.pop(offset).value
-                count = self.stack.pop(offset).value
+            while isinstance(self.pdf.stack_at(offset), PDFNumber):
+                base = self.pdf.pop(offset).value
+                count = self.pdf.pop(offset).value
                 subsection = PDFXrefSubSection(base, count)
 
                 for _ in range(count):
-                    ref_offset = self.stack.pop(offset).value
-                    ref_new = self.stack.pop(offset).value
-                    ref_type = self.stack.pop(offset).command.decode('ascii')
+                    ref_offset = self.pdf.pop(offset).value
+                    ref_new = self.pdf.pop(offset).value
+                    ref_type = self.pdf.pop(offset).command.decode('ascii')
 
                     subsection.entries.append((ref_offset, ref_new, ref_type))
 
                 xref.subsections.append(subsection)
 
-            self.stack.insert(offset, xref)
-
-            # Next xref table
-            offset = self._find_command(b"xref", offset + 1)
+            self.pdf.insert(offset, xref)
 
     def _convert_trailer(self):
-        offset = self._find_command(b"trailer", 0)
-        while offset != -1:
-            self.stack.pop(offset)
-            self.stack.insert(offset, PDFTrailer(self.stack.pop(offset)))
+        any_trailer_command = lambda _, item: (
+            type(item) == PDFCommand and
+            item.command == b"trailer"
+        )
 
-            # Next trailer
-            offset = self._find_command(b"trailer", offset + 1)
+        for offset, _ in self.pdf.find(any_trailer_command):
+            self.pdf.pop(offset)
+            self.pdf.insert(offset, PDFTrailer(self.pdf.pop(offset)))
 
     def end_parsing(self):
         self._convert_startxref()
@@ -155,9 +146,9 @@ class PDFProcessor:
         elif isinstance(item, PDFComment):
             # Discard unneeded comments
             if item.content[:5] == b"%PDF-" or item.content[:5] == b"%%EOF":
-                self.stack.append(item)
+                self.pdf.push(item)
         else:
-            self.stack.append(item)
+            self.pdf.push(item)
 
     def update_xref(self, original: bytes):
         # Force calculation of actual offset for every item in the stack
@@ -176,10 +167,7 @@ class PDFProcessor:
                 count = subsection.count
                 for index in range(count):
                     (ref_offset, ref_new, ref_type) = subsection.entries[index]
-                    try:
-                        object = self.objects[base + index]
-                    except:
-                        object = None
+                    object = self.pdf.get(base + index)
 
                     subsection.entries[index] = (
                         object.item_offset if ref_type == "n" else ref_offset,
@@ -230,11 +218,12 @@ class PDFProcessor:
 
     def encode(self) -> bytes:
         """Encode a PDF from the current state of the processor"""
+        any_item = lambda _a, _b: True
 
         output = b""
         offset = 0
 
-        for item in self.stack:
+        for _, item in self.pdf.find(any_item):
             item.item_offset = offset
             item_encoded = item.encode()
             offset += len(item_encoded)
@@ -245,5 +234,7 @@ class PDFProcessor:
     def pretty_print(self):
         """Pretty print the stack of the processor"""
         _logger.debug("Stack state:")
-        for item in self.stack:
+
+        any_item = lambda _a, _b: True
+        for _, item in self.pdf.find(any_item):
             _logger.debug("- %s" % (item.pretty(),))

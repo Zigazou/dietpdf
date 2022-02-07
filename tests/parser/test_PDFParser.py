@@ -30,11 +30,11 @@ def test_PDFParser_stream():
 
         parser.parse(pdf_stream)
 
-        assert len(processor.stack) == 1
-        assert isinstance(processor.stack[0], PDFObject)
-        assert processor.stack[0].has_stream()
-        assert len(processor.stack[0].stream) == len(raw_data)
-        assert processor.stack[0].stream == raw_data
+        assert processor.pdf.stack_size() == 1
+        assert isinstance(processor.pdf.stack_at(0), PDFObject)
+        assert processor.pdf.stack_at(0).has_stream()
+        assert len(processor.pdf.stack_at(0).stream) == len(raw_data)
+        assert processor.pdf.stack_at(0).stream == raw_data
 
 def test_PDFParser_hexstring():
     hexstring_tests = [
@@ -53,9 +53,9 @@ def test_PDFParser_hexstring():
 
         parser.parse(hexstring_test)
 
-        assert len(processor.stack) == 1
-        assert isinstance(processor.stack[0], PDFHexString)
-        assert len(processor.stack[0].hexstring) == len(hexstring_test) - 2
+        assert processor.pdf.stack_size() == 1
+        assert isinstance(processor.pdf.stack_at(0), PDFHexString)
+        assert len(processor.pdf.stack_at(0).hexstring) == len(hexstring_test) - 2
 
 def test_PDFParser_string():
     string_tests = [
@@ -72,9 +72,9 @@ def test_PDFParser_string():
 
         parser.parse(string_test)
 
-        assert len(processor.stack) == 1
-        assert isinstance(processor.stack[0], PDFString)
-        assert len(processor.stack[0].string) == len(string_test) - 2
+        assert processor.pdf.stack_size() == 1
+        assert isinstance(processor.pdf.stack_at(0), PDFString)
+        assert len(processor.pdf.stack_at(0).string) == len(string_test) - 2
 
 def test_PDFParser_integer():
     integer_tests = [
@@ -92,9 +92,9 @@ def test_PDFParser_integer():
 
         parser.parse(integer_test)
 
-        assert len(processor.stack) == 1
-        assert isinstance(processor.stack[0], PDFNumber)
-        assert type(processor.stack[0].value) == int
+        assert processor.pdf.stack_size() == 1
+        assert isinstance(processor.pdf.stack_at(0), PDFNumber)
+        assert type(processor.pdf.stack_at(0).value) == int
 
 def test_PDFParser_float():
     float_tests = [
@@ -115,6 +115,6 @@ def test_PDFParser_float():
 
         parser.parse(float_test)
 
-        assert len(processor.stack) == 1
-        assert isinstance(processor.stack[0], PDFNumber)
-        assert type(processor.stack[0].value) == float
+        assert processor.pdf.stack_size() == 1
+        assert isinstance(processor.pdf.stack_at(0), PDFNumber)
+        assert type(processor.pdf.stack_at(0).value) == float

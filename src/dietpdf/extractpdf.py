@@ -21,7 +21,7 @@ import sys
 
 from .parser import PDFParser
 from .processor import PDFProcessor
-from .item import PDFReference
+from .item import PDFReference, PDFObject, PDFDictionary
 from .info import content_objects
 from dietpdf import __version__
 
@@ -44,15 +44,36 @@ def extractpdf(input_pdf_name: str, base: str):
     processor.end_parsing()
 
     # Find all content objects
-    content_objects_set = content_objects()
+    content_objects_set = set()
+
+    any_form_xobject = lambda _, item: (
+        type(item) == PDFObject and
+        type(item.value) == PDFDictionary and
+        b"Type" in item and
+        item[b"Type"] == b"XObject" and
+        b"Subtype" in item and
+        item[b"Subtype"] == b"Form"
+    )
+
+    for _, object in processor.pdf.find(any_form_xobject):
+        content_objects_set.add(object.obj_num)
+
+    any_contents = lambda _, item: (
+        type(item) == PDFObject and
+        type(item.value) == PDFDictionary and
+        b"Contents" in item and
+        type(item[b"Contents"]) == PDFReference
+    )
+
+    for _, object in processor.pdf.find(any_contents):
+        content_objects_set.add(object[b"Contents"].obj_num)
 
     # Extract all available streams
-    for object_id in processor.objects:
-        object = processor.objects[object_id]
-
-        if object.stream == None:
-            continue
-
+    any_object_with_stream = lambda _, item: (
+        type(item) == PDFObject and
+        item.stream != None        
+    )
+    for object_id, object in processor.pdf.find(any_object_with_stream):
         extension = "raw"
         width = None
         height = None

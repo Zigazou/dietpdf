@@ -165,3 +165,25 @@ def test_pdf_find():
 
     # Find first comment
     assert pdf.find_first(any_comment).content == b"Comment 1"
+
+def test_pdf_push_pop_insert():
+    any_string = lambda _, item: (
+        type(item) == PDFObject and
+        type(item.value) == PDFString
+    )
+
+    all_objects = create_objects()
+    pdf = PDF()
+
+    # Add all objects to the PDF.
+    for object in all_objects:
+        pdf.push(object)
+
+    # Replace consecutive PDFString with a PDFComment
+    for index, _ in pdf.find(any_string):
+        while any_string(0, pdf.stack_at(index)):
+            pdf.pop(index)
+
+        pdf.insert(index, PDFComment(b"Comment"))
+
+    assert len(pdf.find_all(any_string)) == 0

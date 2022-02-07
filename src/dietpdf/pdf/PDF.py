@@ -27,6 +27,31 @@ class PDF:
         self.stack = []
         self.objects = {}
 
+    def insert(self, index:int, item: PDFItem):
+        """Insert a PDFItem at specified index.
+
+        Any number of PDFItem may be pushed but PDFObject may only be pushed
+        once.
+
+        :param item: The item to insert
+        :type item: PDFItem or any subclass of PDFItem
+        :param index: The index where to insert the item
+        :type index: int
+        :raise TypeError: If `item` is not a PDFItem or any subclass of PDFItem
+        :raise DuplicateError: If `item` is an object that has already been
+            pushed.
+        """
+        if not isinstance(item, PDFItem):
+            raise TypeError("expected PDFItem or any subclass")
+
+        if type(item) == PDFObject and item.obj_num in self.objects:
+            raise DuplicateError("object has already been pushed")
+
+        self.stack.insert(index, item)
+
+        if isinstance(item, PDFObject):
+            self.objects[item.obj_num] = item
+
     def push(self, item: PDFItem):
         """Push a PDFItem.
 
@@ -77,6 +102,14 @@ class PDF:
         :rtype: int
         """
         return len(self.stack)
+
+    def stack_at(self, index: int) -> PDFItem:
+        """Get the element on the stack at the specified index.
+
+        :param index: The index
+        :type index: int
+        """
+        return self.stack[index]
 
     def get(self, obj_num: int, path=[]) -> PDFItem:
         """Given an object given a starting object number and a path.
@@ -161,11 +194,14 @@ class PDF:
         if not callable(select):
             raise TypeError("select must be a function which returns a boolean")
 
-        for index in range(start, len(self.stack)):
+        index = start
+        while index < len(self.stack):
             item = self.stack[index]
 
             if select(index, item):
                 yield (index, item)
+
+            index += 1
 
     def find_all(self, select:callable, start:int=0) -> list:
         """Find an item in the stack according to a predicate.

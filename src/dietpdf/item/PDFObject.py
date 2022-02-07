@@ -35,7 +35,7 @@ class PDFObject(PDFItem):
         self.source_code = False
 
     def __bool__(self):
-        return self.value != None and self.value
+        return self.value != None and bool(self.value)
 
     def __eq__(self, other):
         if isinstance(other, PDFObject):

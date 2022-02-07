@@ -48,37 +48,53 @@ def diet(input_pdf_name: str):
     processor.end_parsing()
 
     # Find all source code streams
+    any_form_xobject = lambda _, item: (
+        type(item) == PDFObject and
+        type(item.value) == PDFDictionary and
+        b"Type" in item and
+        item[b"Type"] == b"XObject" and
+        b"Subtype" in item and
+        item[b"Subtype"] == b"Form"
+    )
+
     source_codes = set()
-    for object_id in processor.objects:
-        object = processor.objects[object_id]
+    for _, object in processor.pdf.find(any_form_xobject):
+        source_codes.add(object.obj_num)
 
-        if not isinstance(object.value, PDFDictionary):
-            continue
+    any_contents = lambda _, item: (
+        type(item) == PDFObject and
+        type(item.value) == PDFDictionary and
+        b"Contents" in item and
+        type(item[b"Contents"]) == PDFReference
+    )
 
-        if b"Type" in object and object[b"Type"] == b"XRef":
-            print(
-                "Sorry, dietpdf doesn't know how to handle cross-reference "
-                "objects for the moment!"
-            )
-            return
+    for _, object in processor.pdf.find(any_contents):
+        source_codes.add(object[b"Contents"].obj_num)
 
-        if b"Type" in object and object[b"Type"] == b"XObject":
-            if b"Subtype" in object and object[b"Subtype"] == b"Form":
-                source_codes.add(object.obj_num)
-        elif b"Contents" in object and isinstance(object[b"Contents"], PDFReference):
-            source_codes.add(object[b"Contents"].obj_num)
+    any_type_xref = lambda _, item: (
+        type(item) == PDFObject and
+        type(item.value) == PDFDictionary and
+        b"Type" in item and item[b"Type"] == b"XRef"
+    )
+    if processor.pdf.find_first(any_type_xref):
+        print(
+            "Sorry, dietpdf doesn't know how to handle cross-reference "
+            "objects for the moment!"
+        )
+        return
 
-    for object_id in processor.objects:
-        object = processor.objects[object_id]
+    any_object = lambda _, item: type(item) == PDFObject
+    for _, object in processor.pdf.find(any_object):
         object.source_code = object.obj_num in source_codes
 
     # Optimize streams.
     _logger.info("Start optimizing objects and streams")
-    for object_id in processor.objects:
-        object = processor.objects[object_id]
-        if isinstance(object, PDFObject) and object.has_stream():
-            _logger.info("Optimizing object %d stream" % object.obj_num)
-            object.optimize_stream()
+    any_object_with_stream = lambda _, item: (
+        type(item) == PDFObject and item.has_stream()
+    )
+    for _, object in processor.pdf.find(any_object_with_stream):
+        _logger.info("Optimizing object %d stream" % object.obj_num)
+        object.optimize_stream()
 
     # Write PDF.
     _logger.info("Updating cross-reference table")

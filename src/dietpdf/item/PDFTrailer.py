@@ -15,7 +15,7 @@ class PDFTrailer(PDFItem):
         self.dictionary = dictionary
 
     def __bool__(self):
-        return self.dictionary != None and self.dictionary
+        return self.dictionary != None and bool(self.dictionary)
 
     def __eq__(self, other):
         if isinstance(other, PDFTrailer):
