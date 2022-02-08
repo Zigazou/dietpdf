@@ -127,23 +127,38 @@ class PDFProcessor:
             self.pdf.insert(offset, PDFTrailer(self.pdf.pop(offset)))
 
     def end_parsing(self):
+        """Converts remaining items on the stack.
+        
+        The `startxref`, `xref` and `trailer` elements of a PDF file do not
+        follow a stack principle. They must therefore be recognized when all the
+        parsing has been done.
+
+        Without calling this method, the processor state is inconsistent.
+        """
         self._convert_startxref()
         self._convert_xref()
         self._convert_trailer()
 
     def push(self, item):
-        """Push an object onto the stack"""
-        if isinstance(item, PDFCommand) and item.command == b"R":
+        """Push an item onto the processor's stack.
+        
+        Pushing item on stack may result in their interpretation. For example,
+        pushing `1` then `0` then `R` on the stack will make the processor
+        replace them by a `PDFReference` object.
+
+        Comments other than `%PDF-*` or `%%EOF` will be completely ignored.
+        """
+        if type(item) == PDFCommand and item.command == b"R":
             self._generate_reference()
-        elif isinstance(item, PDFCommand) and item.command == b"obj":
+        elif type(item) == PDFCommand and item.command == b"obj":
             self._generate_object_id()
-        elif isinstance(item, PDFCommand) and item.command == b"endobj":
+        elif type(item) == PDFCommand and item.command == b"endobj":
             self._generate_object()
-        elif isinstance(item, PDFListClose):
+        elif type(item) == PDFListClose:
             self._generate_list()
-        elif isinstance(item, PDFDictClose):
+        elif type(item) == PDFDictClose:
             self._generate_dict()
-        elif isinstance(item, PDFComment):
+        elif type(item) == PDFComment:
             # Discard unneeded comments
             if item.content[:5] == b"%PDF-" or item.content[:5] == b"%%EOF":
                 self.pdf.push(item)
@@ -151,6 +166,14 @@ class PDFProcessor:
             self.pdf.push(item)
 
     def update_xref(self, original: bytes):
+        """Update all the XRef tables.
+
+        When changes are made on objects of a PDF, chances are that the XRef
+        tables will contain wrong offsets. This method corrects them.
+
+        :param original: The original PDF file content
+        :type original: bytes
+        """
         # Force calculation of actual offset for every item in the stack
         pdf = self.encode()
 
@@ -217,7 +240,11 @@ class PDFProcessor:
             )
 
     def encode(self) -> bytes:
-        """Encode a PDF from the current state of the processor"""
+        """Encode a PDF from the current state of the processor
+        
+        :return: A complete PDF file content ready to be written in a file
+        :rtype: bytes
+        """
         any_item = lambda _a, _b: True
 
         output = b""
@@ -232,7 +259,10 @@ class PDFProcessor:
         return output
 
     def pretty_print(self):
-        """Pretty print the stack of the processor"""
+        """Pretty print the stack of the processor
+        
+        It uses the logging mechanisme at the debug level.
+        """
         _logger.debug("Stack state:")
 
         any_item = lambda _a, _b: True

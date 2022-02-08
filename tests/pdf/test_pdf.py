@@ -5,7 +5,7 @@ from dietpdf.item import (
     PDFList, PDFComment, PDFNull
 )
 
-from dietpdf.pdf import PDF, DuplicateError
+from dietpdf.pdf import PDF
 
 __author__ = "Frédéric BISSON"
 __copyright__ = "Copyright 2022, Frédéric BISSON"
@@ -47,7 +47,10 @@ def create_objects() -> list:
 
         PDFObject(8, 0,
                      PDFDictionary({
-                         PDFName(b"Contents"): PDFReference(3, 0)
+                         PDFName(b"Contents"): PDFReference(3, 0),
+                         PDFName(b"A"): PDFDictionary({
+                             PDFName(b"URI"): PDFString(b"http://example.com")
+                         })
                      }),
                      None
                      ),
@@ -101,6 +104,7 @@ def test_pdf_get():
     assert pdf.get(6, ["Dummy2"]).string == b"Dummy2"
     assert pdf.get(7, ["Contents"]) == pdf.get(8, ["Contents"])
     assert pdf.get(9, [2]) == PDFNumber(2)
+    assert pdf.get(8, ["A", "URI"]) == b"http://example.com"
 
     assert pdf.get(10, [0]).obj_num == 1
     assert pdf.get(10, [0, "Dummy1"]).obj_num == 7
@@ -124,8 +128,10 @@ def test_pdf_push_pop():
     pdf.push(null_object1)
     assert len(pdf.objects) == 1
 
-    with pytest.raises(DuplicateError):
-        pdf.push(null_object1)
+    count_before = len(pdf.objects)
+    pdf.push(null_object1)
+    count_after = len(pdf.objects)
+    assert count_before == count_after
 
     pdf.push(null_object2)
     assert len(pdf.objects) == 2

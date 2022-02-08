@@ -21,7 +21,7 @@ import sys
 
 from .parser import PDFParser
 from .processor import PDFProcessor
-from .item import PDFName
+from .item import PDFObject
 from dietpdf import __version__
 
 _logger = logging.getLogger(__name__)
@@ -42,28 +42,17 @@ def infopdf(input_pdf_name: str):
     processor.end_parsing()
 
     # Show information about the PDF
-    #processor.pretty_print()
+    processor.pretty_print()
 
-    for object_id in processor.objects:
-        object = processor.objects[object_id]
-
-        if not object.has_key_value(b"Type", b"Annot"):
+    any_object = lambda _, item: type(item) == PDFObject
+    for obj_num, object in processor.pdf.find(any_object):
+        if processor.pdf.get(obj_num, [b"Type"]) != b"Annot":
             continue
 
-        if not object.has_key_value(b"Subtype", b"Link"):
+        if processor.pdf.get(obj_num, [b"Subtype"]) != b"Link":
             continue
 
-        key_a = PDFName(b"A")
-        if not (key_a in object.value.items):
-            continue
-
-        link_info = object.value.items[key_a]
-
-        key_uri = PDFName(b"URI")
-        if not (key_uri in link_info.items):
-            continue
-
-        uri = link_info.items[key_uri]
+        uri = processor.pdf.get(obj_num, [b"A", b"URI"])
         print(uri.to_string())
 
 

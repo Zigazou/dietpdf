@@ -10,13 +10,6 @@ from ..item import (
 )
 
 
-class DuplicateError(Exception):
-    """Exception raised by the PDF object when trying to push an already
-    existing PDFObject.
-    """
-    pass
-
-
 class PDF:
     """A PDF document
 
@@ -44,12 +37,9 @@ class PDF:
         if not isinstance(item, PDFItem):
             raise TypeError("expected PDFItem or any subclass")
 
-        if type(item) == PDFObject and item.obj_num in self.objects:
-            raise DuplicateError("object has already been pushed")
-
         self.stack.insert(index, item)
 
-        if isinstance(item, PDFObject):
+        if type(item) == PDFObject:
             self.objects[item.obj_num] = item
 
     def push(self, item: PDFItem):
@@ -61,18 +51,13 @@ class PDF:
         :param item:
         :type item: PDFItem or any subclass of PDFItem
         :raise TypeError: If `item` is not a PDFItem or any subclass of PDFItem
-        :raise DuplicateError: If `item` is an object that has already been
-            pushed.
         """
         if not isinstance(item, PDFItem):
             raise TypeError("expected PDFItem or any subclass")
 
-        if type(item) == PDFObject and item.obj_num in self.objects:
-            raise DuplicateError("object has already been pushed")
-
         self.stack.append(item)
 
-        if isinstance(item, PDFObject):
+        if type(item) == PDFObject:
             self.objects[item.obj_num] = item
 
     def pop(self, index=-1) -> PDFItem:
@@ -153,22 +138,30 @@ class PDF:
             return object
 
         value = None
-        if isinstance(object.value, PDFDictionary):
-            path_elem = PDFName(path[0])
+        while path:
+            if isinstance(object.value, PDFDictionary):
+                path_elem = PDFName(path[0])
 
-            if path_elem in object:
-                value = object[path_elem]
-        elif isinstance(object.value, PDFList):
-            # Index must be an int in the correct range.
-            if type(path[0]) == int and \
-                    path[0] >= 0 and path[0] < len(object.value):
-                value = object[path[0]]
+                if path_elem in object:
+                    value = object[path_elem]
+            elif isinstance(object.value, PDFList):
+                # Index must be an int in the correct range.
+                if type(path[0]) == int and \
+                        path[0] >= 0 and path[0] < len(object.value):
+                    value = object[path[0]]
+
+            path.pop(0)
 
         if value == None:
             return None
 
-        if len(path) > 1 or type(value) == PDFReference:
-            return self.get(value, path[1:])
+        if type(value) == PDFReference:
+            if path:
+                return self.get(value, path[1:])
+            else:
+                return self.objects[value.obj_num]
+        elif path:
+            return None
         else:
             return value
 

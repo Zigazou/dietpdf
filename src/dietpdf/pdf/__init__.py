@@ -1,1 +1,1 @@
-from .PDF import PDF, DuplicateError
+from .PDF import PDF

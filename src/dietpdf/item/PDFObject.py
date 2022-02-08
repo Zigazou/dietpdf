@@ -65,12 +65,18 @@ class PDFObject(PDFItem):
             raise TypeError()
 
     def has_stream(self) -> bool:
-        return self.stream != None
+        """Does this object has a stream?
+
+        :return: True if the object has a non-empty stream, False otherwise
+        :rtype: bool
+        """
+        return bool(self.stream)
 
     def pretty(self) -> str:
-        if self.value != None:
+        if self.stream:
             return self._pretty(
-                "Object(%d, %d)+stream" % (self.obj_num, self.gen_num)
+                "Object(%d, %d) + stream(%d)" %
+                (self.obj_num, self.gen_num, len(self.stream))
             )
         else:
             return self._pretty("Object(%d, %d)" % (self.obj_num, self.gen_num))
@@ -93,14 +99,6 @@ class PDFObject(PDFItem):
             output += b"\nendobj\n"
 
         return output
-
-    def has_type(self, name: str) -> bool:
-        if isinstance(self.value, PDFDictionary):
-            return False
-
-        item_type = PDFName(b"Type")
-        if item_type in self.value.items:
-            return self.value.items[item_type] == PDFName(name.encode('ascii'))
 
     def has_key_value(self, key: bytes, value: bytes) -> bool:
         if isinstance(self.value, PDFDictionary):
