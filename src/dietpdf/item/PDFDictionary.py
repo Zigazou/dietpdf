@@ -21,12 +21,29 @@ class PDFDictionary(PDFItem):
 
     def __init__(self, items: dict):
         assert type(items) == dict
+
         self.items = items
 
     def __bool__(self):
+        """A PDFDictionary is True it contains elements, False otherwise."""
         return self.items != None and len(self.items) > 0
 
     def __eq__(self, other):
+        """Equality operator for PDFDictionary.
+
+        A PDFDictionary is:
+
+          - equal to any other PDFDictionary with the same dictionary
+          - equal to dictionary with the same dictionary
+          - different from any other PDFItem subclass
+
+        Comparing a PDFDictionary with anything else is not implemented.
+
+        :param other: The object to compare to our current object
+        :type other: any
+        :return: True or False or NotImplemented
+        :type: bool
+        """
         if isinstance(other, PDFDictionary):
             return self.items == other.items
         elif isinstance(other, dict):
@@ -37,18 +54,39 @@ class PDFDictionary(PDFItem):
             return NotImplemented
 
     def __contains__(self, key):
+        """Check if a key is contained in a PDFDictionary.
+
+        PDFDictionary keys are PDFName. If anything else than a PDFName is used,
+        this method will try to convert it to a PDFNmae.
+
+        It allows to directly use byte strings as key for example.
+        """
         if not isinstance(key, PDFName):
             key = PDFName(key)
 
         return self.items.__contains__(key)
 
     def __getitem__(self, key):
+        """Retrieve entry in a PDFDictionary given its key.
+
+        PDFDictionary keys are PDFName. If anything else than a PDFName is used,
+        this method will try to convert it to a PDFNmae.
+
+        It allows to directly use byte strings as key for example.
+        """
         if not isinstance(key, PDFName):
             key = PDFName(key)
 
         return self.items.__getitem__(key)
 
     def __setitem__(self, key, value):
+        """Set entry in a PDFDictionary given its key.
+
+        PDFDictionary keys are PDFName. If anything else than a PDFName is used,
+        this method will try to convert it to a PDFNmae.
+
+        It allows to directly use byte strings as key for example.
+        """
         if not isinstance(key, PDFName):
             key = PDFName(key)
 

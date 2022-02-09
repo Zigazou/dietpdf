@@ -7,16 +7,34 @@ __email__ = "zigazou@protonmail.com"
 
 from .PDFItem import PDFItem
 
+
 class PDFStartXref(PDFItem):
     """A PDF startxref"""
 
     def __init__(self, offset: int):
+        assert type(offset) == int
         self.offset = offset
 
     def __bool__(self):
-        return self.offset != None and self.offset != 0
+        """A PDFStartXref is always True."""
+        return True
 
     def __eq__(self, other):
+        """Equality operator for PDFStartXref.
+
+        A PDFStartXref is:
+
+          - equal to any other PDFStartXref with the same offset
+          - equal to any int with the same value as the offset
+          - different from any other PDFItem subclass
+
+        Comparing a PDFStartXref with anything else is not implemented.
+
+        :param other: The object to compare to our current object
+        :type other: any
+        :return: True or False or NotImplemented
+        :type: bool
+        """
         if isinstance(other, PDFStartXref):
             return self.offset == other.offset
         elif isinstance(other, int):

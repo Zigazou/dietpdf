@@ -21,7 +21,7 @@ import sys
 
 from .parser import PDFParser
 from .processor import PDFProcessor
-from .item import PDFObject
+from .item import PDFObject, PDFDictionary
 from dietpdf import __version__
 
 _logger = logging.getLogger(__name__)
@@ -41,19 +41,21 @@ def infopdf(input_pdf_name: str):
     parser.parse(pdf_file_content)
     processor.end_parsing()
 
-    # Show information about the PDF
-    processor.pretty_print()
+    pdf = processor.pdf
 
-    any_object = lambda _, item: type(item) == PDFObject
-    for obj_num, object in processor.pdf.find(any_object):
-        if processor.pdf.get(obj_num, [b"Type"]) != b"Annot":
-            continue
+    # Print all hyperlinks.
+    def any_link(_, item): return (
+        type(item) == PDFObject and type(item.value) == PDFDictionary and
+        "Type" in item.value and item.value["Type"] == b"Annot" and
+        "Subtype" in item.value and item.value["Subtype"] == b"Link"
+    )
 
-        if processor.pdf.get(obj_num, [b"Subtype"]) != b"Link":
-            continue
+    urls = set()
+    for _, object in pdf.find(any_link):
+        urls.add(pdf.get(object, ["A", "URI"]).to_string())
 
-        uri = processor.pdf.get(obj_num, [b"A", b"URI"])
-        print(uri.to_string())
+    for url in urls:
+        print(url)
 
 
 def parse_args(args):

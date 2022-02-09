@@ -10,37 +10,37 @@ from .PDFItem import PDFItem
 # Hints when there is no need to insert a space between two items when encoding.
 NO_SPACE = {
     "": [
-        "PDFNull", "PDFCommand", "PDFDictionary", "PDFList", "PDFName",
+        "PDFNull", "PDFCommand", "PDFList", "PDFList", "PDFName",
         "PDFString", "PDFHexString", "PDFReference", "PDFNumber"
     ],
     "PDFNumber": [
-        "PDFCommand", "PDFNull", "PDFDictionary", "PDFList", "PDFName",
+        "PDFCommand", "PDFNull", "PDFList", "PDFList", "PDFName",
         "PDFString", "PDFHexString",
     ],
     "PDFList": [
-        "PDFNull", "PDFCommand", "PDFDictionary", "PDFList", "PDFName",
+        "PDFNull", "PDFCommand", "PDFList", "PDFList", "PDFName",
         "PDFString", "PDFHexString", "PDFReference", "PDFNumber"
     ],
-    "PDFDictionary": [
-        "PDFNull", "PDFCommand", "PDFDictionary", "PDFList", "PDFName",
+    "PDFList": [
+        "PDFNull", "PDFCommand", "PDFList", "PDFList", "PDFName",
         "PDFString", "PDFHexString", "PDFReference", "PDFNumber"
     ],
     "PDFString": [
-        "PDFNull", "PDFCommand", "PDFDictionary", "PDFList", "PDFName",
+        "PDFNull", "PDFCommand", "PDFList", "PDFList", "PDFName",
         "PDFString", "PDFHexString", "PDFReference", "PDFNumber"
     ],
     "PDFHexString": [
-        "PDFNull", "PDFCommand", "PDFDictionary", "PDFList", "PDFName",
+        "PDFNull", "PDFCommand", "PDFList", "PDFList", "PDFName",
         "PDFString", "PDFHexString", "PDFReference", "PDFNumber"
     ],
     "PDFName": [
-        "PDFDictionary", "PDFList", "PDFName", "PDFString", "PDFHexString",
+        "PDFList", "PDFList", "PDFName", "PDFString", "PDFHexString",
     ],
     "PDFCommand": [
-        "PDFDictionary", "PDFList", "PDFName", "PDFString", "PDFHexString",
+        "PDFList", "PDFList", "PDFName", "PDFString", "PDFHexString",
     ],
     "PDFNull": [
-        "PDFDictionary", "PDFList", "PDFName", "PDFString", "PDFHexString",
+        "PDFList", "PDFList", "PDFName", "PDFString", "PDFHexString",
     ],
 }
 
@@ -49,12 +49,35 @@ class PDFList(PDFItem):
     """A PDF list"""
 
     def __init__(self, items: list):
+        """Creates a PDF list.
+        
+        If the items parameter is not a list, it is placed in a list that will
+        become the list of the PDFList object.
+
+        :param items: The items of the list
+        :type items: list or other type
+        """
         if type(items) != list:
             items = [items]
 
         self.items = items
 
     def __eq__(self, other):
+        """Equality operator for PDFList.
+
+        A PDFList is:
+
+          - equal to any other PDFList with the same list
+          - equal to list with the same list
+          - different from any other PDFItem subclass
+
+        Comparing a PDFList with anything else is not implemented.
+
+        :param other: The object to compare to our current object
+        :type other: any
+        :return: True or False or NotImplemented
+        :type: bool
+        """
         if isinstance(other, PDFList):
             return self.items == other.items
         elif isinstance(other, list):
@@ -65,6 +88,7 @@ class PDFList(PDFItem):
             return NotImplemented
 
     def __bool__(self):
+        """A PDFList is True if it contains items, False otherwise."""
         return self.items != None and len(self.items) > 0
 
     def __len__(self):

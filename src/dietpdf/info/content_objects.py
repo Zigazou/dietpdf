@@ -31,11 +31,11 @@ def content_objects(objects: dict) -> set:
         object = objects[object_id]
 
         # Ignore objects with no dictionary.
-        if not isinstance(object.value, PDFDictionary):
+        if type(object.value) != PDFDictionary:
             continue
 
         # Ignore objects which have no /Contents key in their dictionary.
-        if not(b"Contents" in object):
+        if b"Contents" not in object:
             continue
 
         contents = object[b"Contents"]

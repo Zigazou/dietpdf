@@ -6,7 +6,7 @@ __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
 from ..item import (
-    PDFReference, PDFList, PDFDictionary, PDFName, PDFObject, PDFItem
+    PDFReference, PDFList, PDFDictionary, PDFObject, PDFItem
 )
 
 
@@ -20,7 +20,7 @@ class PDF:
         self.stack = []
         self.objects = {}
 
-    def insert(self, index:int, item: PDFItem):
+    def insert(self, index: int, item: PDFItem):
         """Insert a PDFItem at specified index.
 
         Any number of PDFItem may be pushed but PDFObject may only be pushed
@@ -111,7 +111,8 @@ class PDF:
         transformed into the object pointed at.
 
         :param obj_num: The object number.
-        :type obj_num: int or PDFReference or anything convertible to int
+        :type obj_num: int or PDFReference or PDFObject or anything convertible
+            to int
         :param path: A path described by a sequence of subpath.
         :type path: list
         :return: The specified object (subclass of PDFItem) or None if the path
@@ -122,7 +123,7 @@ class PDF:
         assert type(path) == list
 
         # Normalize the object number.
-        if isinstance(obj_num, PDFReference):
+        if type(obj_num) in [PDFObject, PDFReference]:
             obj_num = obj_num.obj_num
         else:
             obj_num = int(obj_num)
@@ -134,38 +135,29 @@ class PDF:
         object = self.objects[obj_num]
 
         # No more path to follow, this is the final destination.
-        if path == []:
+        if not path:
             return object
 
-        value = None
-        while path:
-            if isinstance(object.value, PDFDictionary):
-                path_elem = PDFName(path[0])
-
-                if path_elem in object:
-                    value = object[path_elem]
-            elif isinstance(object.value, PDFList):
-                # Index must be an int in the correct range.
-                if type(path[0]) == int and \
-                        path[0] >= 0 and path[0] < len(object.value):
-                    value = object[path[0]]
+        # Consume as many path elements as possible inside the same object.
+        value = object.value
+        while path and value:
+            if type(value) == PDFDictionary:
+                value = value[path[0]] if path[0] in value else None
+            elif type(value) == PDFList:
+                value = value[path[0]] if path[0] in range(len(value)) else None
+            elif type(value) == PDFReference:
+                break
 
             path.pop(0)
 
-        if value == None:
-            return None
-
         if type(value) == PDFReference:
-            if path:
-                return self.get(value, path[1:])
-            else:
-                return self.objects[value.obj_num]
+            return self.get(value, path)
         elif path:
             return None
         else:
             return value
 
-    def find(self, select:callable, start:int=0):
+    def find(self, select: callable, start: int = 0):
         """Find an item in the stack according to a predicate.
 
         The predicate should have the following signature:
@@ -196,7 +188,7 @@ class PDF:
 
             index += 1
 
-    def find_all(self, select:callable, start:int=0) -> list:
+    def find_all(self, select: callable, start: int = 0) -> list:
         """Find an item in the stack according to a predicate.
 
         See the `find` method for information about the predicate.
@@ -210,9 +202,9 @@ class PDF:
         :rtype: list
         """
 
-        return [item for _, item in self.find(select,start)]
+        return [item for _, item in self.find(select, start)]
 
-    def find_first(self, select:callable, start:int=0) -> PDFItem:
+    def find_first(self, select: callable, start: int = 0) -> PDFItem:
         """Find an item in the stack according to a predicate.
 
         See the `find` method for information about the predicate.

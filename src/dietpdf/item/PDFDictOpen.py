@@ -7,10 +7,29 @@ __email__ = "zigazou@protonmail.com"
 
 from .PDFItem import PDFItem
 
+
 class PDFDictOpen(PDFItem):
-    """Opening of a PDF dictionary (<<)"""
+    """Opening of a PDF dictionary (<<)
+
+    A `PDFDictOpen` should be removed from the stack upon creation of a
+    `PDFDictionary`.
+    """
 
     def __eq__(self, other):
+        """Equality operator for PDFDictOpen.
+
+        A PDFDictOpen is:
+
+          - equal to any other PDFDictOpen
+          - different from any other PDFItem subclass
+
+        Comparing a PDFDictOpen with anything else is not implemented.
+
+        :param other: The object to compare to our current object
+        :type other: any
+        :return: True or False or NotImplemented
+        :type: bool
+        """
         if isinstance(other, PDFDictOpen):
             return True
         elif isinstance(other, PDFItem):
@@ -19,4 +38,5 @@ class PDFDictOpen(PDFItem):
             return NotImplemented
 
     def __bool__(self):
+        """A PDFDictOpen is always True"""
         return True

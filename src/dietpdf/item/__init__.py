@@ -21,3 +21,4 @@ from .PDFXref import PDFXref
 from .PDFXrefSubSection import PDFXrefSubSection
 from .PDFStartXref import PDFStartXref
 from .PDFTrailer import PDFTrailer
+from .deep_find import deep_find
