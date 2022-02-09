@@ -22,6 +22,7 @@ class PDFItem:
         return self.__class__.__name__
 
     def __bool__(self):
+        """A PDFItem is always False."""
         return False
 
     def encode(self) -> bytes:
@@ -53,6 +54,3 @@ class PDFItem:
             A string (str)
         """
         return self._pretty(self.__class__.__name__[3:])
-
-    def need_space_before(self, item):
-        raise Exception("The need_space_before method has not been implemented")

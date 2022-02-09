@@ -30,12 +30,20 @@ def rle_encode(content: bytes) -> bytes:
     """Encode a byte string using the RLE algorithm specified by the PDF
     specifications.
 
+    :param content: The byte string to encode using the RLE algorithm.
+    :type content: bytes
+    :return: The byte string encoded
+    :rtype: bytes
     """
-    output = []
+
+    assert type(content) == bytes
+
+    output = b""
     offset = 0
     while offset < len(content):
         current = content[offset]
 
+        # Read as many following bytes identical to the current byte.
         count = 1
         offset += 1
         while offset < len(content) and content[offset] == current and count < 127:
@@ -43,29 +51,37 @@ def rle_encode(content: bytes) -> bytes:
             offset += 1
 
         if count == 1:
+            # The current byte does not repeat.
             if offset == len(content):
-                output.append(0)
-                output.append(current)
+                # The current byte is the last byte.
+                output += b"\000%c" % current
             else:
+                # Read as many different bytes
                 while offset < len(content) and content[offset] != current and count < 128:
                     current = content[offset]
                     count += 1
                     offset += 1
 
-                output.append(count - 1)
-                output += content[offset - count:offset]
+                output += b"%c%s" % (count - 1, content[offset - count:offset])
         else:
-            output.append(257 - count)
-            output.append(current)
+            # Encode the repetition of the current byte.
+            output += b"%c%c" % (257 - count, current)
 
-    return bytes(output)
+    return output
 
 
 def rle_decode(content: bytes) -> bytes:
     """Decode a byte string using the RLE algorithm specified by the PDF
     specifications.
 
+    :param content: The byte string to decode using the RLE algorithm.
+    :type content: bytes
+    :return: The byte string decoded
+    :rtype: bytes
     """
+
+    assert type(content) == bytes
+
     offset = 0
     output = b""
     while offset < len(content):
@@ -73,15 +89,13 @@ def rle_decode(content: bytes) -> bytes:
 
         if token < 128:
             length = token + 1
-            offset += 1
-            output += content[offset:offset + length]
+            output += content[offset + 1:offset + length + 1]
             offset += length
         elif token > 128:
             length = 257 - token
-            offset += 1
-            output += content[offset:offset + 1] * length
-            offset += 1
-        else:
+            output += content[offset + 1:offset + 2] * length
             offset += 1
 
-    return bytes(output)
+        offset += 1
+
+    return output

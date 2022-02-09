@@ -8,10 +8,21 @@ __email__ = "zigazou@protonmail.com"
 from .PDFItem import PDFItem
 from .PDFObject import PDFObject
 
+
 class PDFReference(PDFItem):
     """A PDF reference to a PDF object"""
 
-    def __init__(self, obj_num: int, gen_num: int):
+    def __init__(self, obj_num: int, gen_num: int = 0):
+        """Create a PDFReference (like 1 0 R).
+
+        If given a PDFObject, a reference to this object will be created.
+
+        :param obj_num: A PDFObject or the object number
+        :type obj_num: PDFObject or int
+        :param gen_num: The generation number (usually 0)
+        :type gen_num: int
+        """
+
         if isinstance(obj_num, PDFObject):
             self.obj_num = obj_num.obj_num
             self.gen_num = obj_num.gen_num
@@ -20,9 +31,28 @@ class PDFReference(PDFItem):
             self.gen_num = gen_num
 
     def __bool__(self):
+        """A PDFReference is always True."""
         return True
 
     def __eq__(self, other):
+        """Equality operator for PDFReference.
+
+        A PDFReference is:
+
+          - equal to any other PDFReference with the same object number and
+            generation number
+          - equal to a tuple (int, int) with the same object number and
+            generation number
+          - different from any other PDFItem subclass
+
+        Comparing a PDFReference with anything else (including tuple with more
+        than 2 elements) is not implemented.
+
+        :param other: The object to compare to our current object
+        :type other: any
+        :return: True or False or NotImplemented
+        :type: bool
+        """
         if isinstance(other, PDFReference):
             return (
                 self.obj_num == other.obj_num and

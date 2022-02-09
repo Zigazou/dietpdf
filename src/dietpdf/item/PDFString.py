@@ -7,27 +7,60 @@ __email__ = "zigazou@protonmail.com"
 
 from .PDFItem import PDFItem
 
-OCTAL_DIGITS = b"01234567"
-ESCAPE_CHARS = {
-    0x6e: 0x0a, # \n
-    0x72: 0x0d, # \r
-    0x74: 0x09, # \t
-    0x62: 0x08, # \b
-    0x66: 0x0c, # \f
-    0x28: 0x28, # \(
-    0x29: 0x29, # \)
-    0x5c: 0x5c, # \\
-}
-LF = 0x0a
-CR = 0x0d
-ESCAPE = ord(b"\\")
 
-STATE_INIT = 0
-STATE_ESCAPE = 1
-STATE_OCTAL_1 = 2
-STATE_OCTAL_2 = 3
-STATE_ESCAPE_CR = 4
+# The following constants are used by the unescape function.
+
+OCTAL_DIGITS = b"01234567"  # Characters accepted for an octal digit
+
+# All supported escape character sequence and their equivalent value.
+ESCAPE_CHARS = {
+    0x6e: 0x0a,  # \n
+    0x72: 0x0d,  # \r
+    0x74: 0x09,  # \t
+    0x62: 0x08,  # \b
+    0x66: 0x0c,  # \f
+    0x28: 0x28,  # \(
+    0x29: 0x29,  # \)
+    0x5c: 0x5c,  # \\
+}
+LF = 0x0a  # Line feed
+CR = 0x0d  # Carriage return
+ESCAPE = ord(b"\\")  # Escape character
+
+STATE_INIT = 0  # Initial state
+STATE_ESCAPE = 1  # An escape character (\) has been read
+STATE_OCTAL_1 = 2  # The first digit of an octal escape sequence has been read
+STATE_OCTAL_2 = 3  # The second digit of an octal escape sequence has been read
+STATE_ESCAPE_CR = 4  # A carriage return byte (\r) has been read
+
+
 def unescape(string: bytes) -> bytes:
+    """Unescape a PDF string.
+
+    The unescape function decodes all escape sequences from a PDF string.
+
+    The following sequences are recognized:
+
+      - \#, \##, \###, where # dentoes an octal digit (from 0 to 7)
+      - \n = line feed (0x0a)
+      - \r = carriage return (0x0d)
+      - \t = tabulation (0x09)
+      - \b = back (0x08)
+      - \f = form feed (0x0c)
+      - \( = left parentheses (()
+      - \) = right parentheses ())
+      - \\ = backslash (\)
+      - \ at the end of a line, be it Unix LF or Windows CR+LF style end of
+        line, will remove the end of line from the unescaped string
+
+    :param string: The string to unescape
+    :type string: bytes
+    :return: The unescaped string
+    :rtype: bytes
+    """
+
+    assert type(string) == bytes
+
     unescaped = b""
     state = STATE_INIT
     ordinal = 0
@@ -91,12 +124,30 @@ class PDFString(PDFItem):
     """A PDF string (between ( and ) )"""
 
     def __init__(self, string: bytes):
+        assert type(string) == bytes
+
         self.string = string
 
     def __bool__(self):
+        """A PDFString is True if it contains characteres, False otherwise."""
         return self.string != None and len(self.string) > 0
 
     def __eq__(self, other):
+        """Equality operator for PDFString.
+
+        A PDFString is:
+
+          - equal to any other PDFString with the same byte string
+          - equal to any byte string with the same byte string
+          - different from any other PDFItem subclass
+
+        Comparing a PDFString with anything else is not implemented.
+
+        :param other: The object to compare to our current object
+        :type other: any
+        :return: True or False or NotImplemented
+        :type: bool
+        """
         if isinstance(other, PDFString):
             return self.string == other.string
         elif isinstance(other, bytes):
@@ -113,6 +164,18 @@ class PDFString(PDFItem):
         return b"(%s)" % (self.string,)
 
     def to_string(self) -> str:
+        """Converts the content of a PDFString to a str.
+
+        The content converts every escape sequence found in the PDFString.
+
+        It looks for BOM at the beginning of the string to determine if the
+        string uses UTF-8, UTF-16-LE or UTF-16-BE.
+
+        If no BOM is there, the string is decoded as a ISO-8859-1 string.
+
+        :return: the string in str type
+        :rtype: str
+        """
         unescaped = unescape(self.string)
 
         if len(unescaped) >= 3 and unescaped[0:3] == b"\xEF\xBB\xBF":

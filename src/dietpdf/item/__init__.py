@@ -1,29 +1,3 @@
-__all__ = [
-    "PDFItem",
-    "PDFComment",
-    "PDFDictOpen",
-    "PDFDictClose",
-    "PDFDictionary",
-    "PDFListOpen",
-    "PDFListClose",
-    "PDFList",
-    "PDFObject",
-    "PDFObjectID",
-    "PDFName",
-    "PDFNull",
-    "PDFHexString",
-    "PDFString",
-    "PDFCommand",
-    "PDFReference",
-    "PDFObjectEnd",
-    "PDFStream",
-    "PDFNumber",
-    "PDFXref",
-    "PDFXrefSubSection",
-    "PDFStartXref",
-    "PDFTrailer",
-]
-
 from .PDFItem import PDFItem
 from .PDFComment import PDFComment
 from .PDFDictOpen import PDFDictOpen
@@ -47,3 +21,4 @@ from .PDFXref import PDFXref
 from .PDFXrefSubSection import PDFXrefSubSection
 from .PDFStartXref import PDFStartXref
 from .PDFTrailer import PDFTrailer
+from .deep_find import deep_find

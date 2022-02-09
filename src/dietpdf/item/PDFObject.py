@@ -24,10 +24,16 @@ _logger = getLogger("PDFObject")
 
 NO_SPACE = ["PDFDictionary", "PDFList", "PDFString", "PDFHexString"]
 
+
 class PDFObject(PDFItem):
     """A PDF object"""
 
     def __init__(self, obj_num: int, gen_num: int, value, stream: PDFStream):
+        assert type(obj_num) == int
+        assert type(gen_num) == int
+        assert isinstance(value, PDFItem)
+        assert stream == None or type(stream) == PDFStream
+
         self.obj_num = obj_num
         self.gen_num = gen_num
         self.value = value
@@ -35,9 +41,27 @@ class PDFObject(PDFItem):
         self.source_code = False
 
     def __bool__(self):
-        return self.value != None and self.value
+        """A PDFObject is True if it has a value and this value is itself
+        True, False otherwise.
+        """
+        return self.value != None and bool(self.value)
 
     def __eq__(self, other):
+        """Equality operator for PDFObject.
+
+        A PDFObject is:
+
+          - equal to any other PDFObject with the same object and generation
+            numbers, the same value and the same stream
+          - different from any other PDFItem subclass
+
+        Comparing a PDFObject with anything else is not implemented.
+
+        :param other: The object to compare to our current object
+        :type other: any
+        :return: True or False or NotImplemented
+        :type: bool
+        """
         if isinstance(other, PDFObject):
             return (
                 self.obj_num == other.obj_num and
@@ -51,12 +75,37 @@ class PDFObject(PDFItem):
             return NotImplemented
 
     def __contains__(self, key):
-        if not isinstance(key, PDFName):
+        """A PDFObject implements the __contains__ method when its value is a
+        PDFDictionary.
+
+        PDFDictionary keys are PDFName. If anything else than a PDFName is used,
+        this method will try to convert it to a PDFNmae.
+
+        It allows to directly use byte strings as key for example.
+
+        If the PDFObject value is anything other than PDFDictionary, it returns
+        False.
+        """
+        if type(key) != PDFName:
             key = PDFName(key)
+
+        if type(self.value) != PDFDictionary:
+            return False
 
         return self.value.__contains__(key)
 
     def __getitem__(self, key):
+        """A PDFObject implements the __getitem__ method when its value is a
+        PDFDictionary.
+
+        PDFDictionary keys are PDFName. If anything else than a PDFName is used,
+        this method will try to convert it to a PDFNmae.
+
+        It allows to directly use byte strings as key for example.
+
+        Using this method on PDFObject having other values than PDFDictionary
+        will lead to incorrect results or exceptions.
+        """
         if isinstance(self.value, PDFDictionary):
             return self.value.__getitem__(key)
         elif isinstance(self.value, PDFList):
@@ -65,12 +114,18 @@ class PDFObject(PDFItem):
             raise TypeError()
 
     def has_stream(self) -> bool:
-        return self.stream != None
+        """Does this object has a stream?
+
+        :return: True if the object has a non-empty stream, False otherwise
+        :rtype: bool
+        """
+        return bool(self.stream)
 
     def pretty(self) -> str:
-        if self.value != None:
+        if self.stream:
             return self._pretty(
-                "Object(%d, %d)+stream" % (self.obj_num, self.gen_num)
+                "Object(%d, %d) + stream(%d)" %
+                (self.obj_num, self.gen_num, len(self.stream))
             )
         else:
             return self._pretty("Object(%d, %d)" % (self.obj_num, self.gen_num))
@@ -94,44 +149,20 @@ class PDFObject(PDFItem):
 
         return output
 
-    def has_type(self, name: str) -> bool:
-        if isinstance(self.value, PDFDictionary):
-            return False
-
-        item_type = PDFName(b"Type")
-        if item_type in self.value.items:
-            return self.value.items[item_type] == PDFName(name.encode('ascii'))
-
-    def has_key_value(self, key: bytes, value: bytes) -> bool:
-        if isinstance(self.value, PDFDictionary):
-            return False
-
-        pdf_key = PDFName(key)
-        pdf_value = PDFName(value)
-        if pdf_key in self.value.items:
-            pdf_item_value = self.value.items[pdf_key]
-            if isinstance(pdf_item_value, PDFList):
-                return pdf_value in pdf_item_value
-            else:
-                return pdf_item_value == pdf_value
-
-    def get_value(self, key: bytes):
-        if not isinstance(self.value, PDFDictionary):
-            return None
-
-        pdf_key = PDFName(key)
-        if pdf_key in self.value.items:
-            return self.value.items[pdf_key]
-        else:
-            return None
-
     def decode_stream(self) -> bytes:
+        """Decode the stream associated to the PDFObject.
+
+        The stream is decoded according to the specified filters.
+
+        :return: The decoded stream
+        :rtype: bytes
+        """
         if not self.has_stream():
             return b""
 
         # Retrieve filter(s)
-        filters = self.get_value(b"Filter")
-        if filters == None:
+        filters = self[b"Filters"] if b"Filters" in self else None
+        if not filters:
             # The stream needs not to be filtered
             return self.stream.stream
 
@@ -170,6 +201,15 @@ class PDFObject(PDFItem):
         return output
 
     def optimize_stream(self):
+        """Optimize the stream of a PDFObject, if any.
+
+        This method will try different strategies (filters, combination of
+        filters) to reduce the stream size.
+
+        The optimization process will replace the stream by its optimized
+        version.
+        """
+        # No stream, nothing to optimize.
         if not self.has_stream():
             return b""
 
@@ -187,21 +227,19 @@ class PDFObject(PDFItem):
         key_rle_decode = PDFName(b"RunLengthDecode")
 
         # Retrieve filter(s)
-        filters = self.get_value(b"Filter")
-        if filters == None:
-            filters = []
+        filters = self[b"Filter"] if b"Filter" in self else []
 
         # Convert the filter to a PDFList of filters
-        if not isinstance(filters, PDFList):
+        if type(filters) != PDFList:
             filters = PDFList(filters)
 
         # Retrieve decode parameters
-        decode_parms = self.get_value(b"DecodeParms")
-        if len(filters) == 0:
+        decode_parms = self[b"DecodeParms"] if b"DecodeParms" in self else []
+        if not filters:
             decode_parms = PDFList([])
-        elif decode_parms == None:
-            decode_parms = PDFList(PDFNull())
-        elif not isinstance(decode_parms, PDFList):
+        elif not decode_parms:
+            decode_parms = PDFList([PDFNull() for _ in range(len(filters))])
+        elif type(decode_parms) != PDFList:
             decode_parms = PDFList(decode_parms)
 
         # Remove the FlateDecode from the filters list if any
@@ -278,7 +316,7 @@ class PDFObject(PDFItem):
 
         # Replace only if size reduced
         if len(zopfli_stream) < len(self.stream.stream) or \
-            len(zopfli_rle_stream) < len(self.stream):
+                len(zopfli_rle_stream) < len(self.stream):
 
             _logger.debug(
                 "Compression reduces the object %d stream size" % self.obj_num
@@ -288,7 +326,7 @@ class PDFObject(PDFItem):
                 _logger.debug(
                     ("Zopfli alone is better than RLE + Zopfli for object %d "
                      "(%d -> %d)"
-                    ) % (self.obj_num, len(self.stream), len(zopfli_rle_stream))
+                     ) % (self.obj_num, len(self.stream), len(zopfli_rle_stream))
                 )
                 filters.items.insert(0, key_flate_decode)
                 decode_parms.items.insert(0, PDFNull())
@@ -300,7 +338,7 @@ class PDFObject(PDFItem):
                 _logger.debug(
                     ("RLE + Zopfli is better than Zopfli alone for object %d "
                      "(%d -> %d)"
-                    ) % (self.obj_num, len(self.stream), len(zopfli_rle_stream))
+                     ) % (self.obj_num, len(self.stream), len(zopfli_rle_stream))
                 )
                 filters.items.insert(0, key_rle_decode)
                 decode_parms.items.insert(0, PDFNull())

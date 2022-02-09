@@ -39,7 +39,7 @@ class PDFParser:
             re.escape(self.pdf_delimiter)
         )
 
-        self.end_of_line = re.compile(b"(.*?)[\r\n]+", re.DOTALL)
+        self.end_of_line = re.compile(b"(.*?)([\r\n]+|$)", re.DOTALL)
 
         self.end_of_number = re.compile(
             b"([+-]?[0-9]+\.?[0-9]*|[+-]?[0-9]*\.[0-9]+)" + self.end_value

@@ -7,14 +7,43 @@ __email__ = "zigazou@protonmail.com"
 
 from .PDFItem import PDFItem
 
+
 class PDFObjectID(PDFItem):
     """A PDF object ID"""
 
     def __init__(self, obj_num: int, gen_num: int):
+        """Create a PDFObjectID.
+
+        :param obj_num: The object number
+        :type obj_num: int
+        :param gen_num: The generation number (usually 0)
+        :type gen_num: int
+        """
+        assert type(obj_num) == int
+        assert type(gen_num) == int
+
         self.obj_num = obj_num
         self.gen_num = gen_num
 
     def __eq__(self, other):
+        """Equality operator for PDFObjectID.
+
+        A PDFObjectID is:
+
+          - equal to any other PDFObjectID with the same object number and
+            generation number
+          - equal to a tuple (int, int) with the same object number and
+            generation number
+          - different from any other PDFItem subclass
+
+        Comparing a PDFObjectID with anything else (including tuple with more
+        than 2 elements) is not implemented.
+
+        :param other: The object to compare to our current object
+        :type other: any
+        :return: True or False or NotImplemented
+        :type: bool
+        """
         if isinstance(other, PDFObjectID):
             return (
                 self.obj_num == other.obj_num and
@@ -31,6 +60,7 @@ class PDFObjectID(PDFItem):
             return NotImplemented
 
     def __bool__(self):
+        """A PDFObjectID is always True."""
         return True
 
     def pretty(self) -> str:

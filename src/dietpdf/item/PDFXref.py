@@ -7,17 +7,39 @@ __email__ = "zigazou@protonmail.com"
 
 from .PDFItem import PDFItem
 
+
 class PDFXref(PDFItem):
-    """A PDF cross-reference section"""
+    """A PDF cross-reference section.
+
+    It is composed of subsections of cross reference tables.
+    """
 
     def __init__(self):
         self.subsections = []
         self.first_entry_offset = None
 
     def __bool__(self):
+        """A PDFXref is True if it contains some subsections, False
+        otherwise.
+        """
         return self.subsections != None and len(self.subsections) > 0
 
     def __eq__(self, other):
+        """Equality operator for PDFXref.
+
+        A PDFXref is:
+
+          - equal to any other PDFXref with the same subsections
+          - equal to any list of subsections with the same subsections
+          - different from any other PDFItem subclass
+
+        Comparing a PDFXref with anything else is not implemented.
+
+        :param other: The object to compare to our current object
+        :type other: any
+        :return: True or False or NotImplemented
+        :type: bool
+        """
         if isinstance(other, PDFXref):
             return self.subsections == other.subsections
         elif isinstance(other, list):
