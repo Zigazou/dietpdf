@@ -7,10 +7,10 @@ __email__ = "zigazou@protonmail.com"
 
 import re
 
-from .PDFItem import PDFItem
+from .PDFToken import PDFToken
 
 
-class PDFHexString(PDFItem):
+class PDFHexString(PDFToken):
     """A PDF hexadecimal string (between < and >)"""
 
     def __init__(self, hexstring: bytes):
@@ -29,7 +29,7 @@ class PDFHexString(PDFItem):
 
           - equal to any other PDFHexString with the bytestring
           - equal to byte string with the byte string
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFHexString with anything else is not implemented.
 
@@ -42,7 +42,7 @@ class PDFHexString(PDFItem):
             return self.hexstring == other.hexstring
         elif isinstance(other, bytes):
             return self.hexstring == other
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented

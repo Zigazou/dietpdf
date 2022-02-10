@@ -5,6 +5,8 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
+from dietpdf.token import PDFToken
+
 from .PDFItem import PDFItem
 from .PDFObject import PDFObject
 
@@ -43,7 +45,7 @@ class PDFReference(PDFItem):
             generation number
           - equal to a tuple (int, int) with the same object number and
             generation number
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFReference with anything else (including tuple with more
         than 2 elements) is not implemented.
@@ -63,7 +65,7 @@ class PDFReference(PDFItem):
                 return self.obj_num == other[0] and self.gen_num == other[1]
             else:
                 return NotImplemented
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented

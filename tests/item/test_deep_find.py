@@ -1,9 +1,7 @@
 import pytest
 
-from dietpdf.item import (
-    deep_find, PDFObject, PDFDictionary, PDFName, PDFString, PDFNumber,
-    PDFList, PDFItem
-)
+from dietpdf.token import PDFName, PDFString, PDFNumber
+from dietpdf.item import deep_find, PDFObject, PDFDictionary, PDFList, PDFItem
 
 __author__ = "Frédéric BISSON"
 __copyright__ = "Copyright 2022, Frédéric BISSON"

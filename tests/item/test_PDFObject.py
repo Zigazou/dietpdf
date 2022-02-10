@@ -1,4 +1,5 @@
-from dietpdf.item import PDFObject, PDFNumber, PDFDictionary
+from dietpdf.token import PDFNumber
+from dietpdf.item import PDFObject, PDFDictionary
 
 __author__ = "Frédéric BISSON"
 __copyright__ = "Copyright 2022, Frédéric BISSON"

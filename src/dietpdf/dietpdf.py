@@ -20,11 +20,9 @@ import logging
 import sys
 import re
 
-from dietpdf.item import PDFDictionary
-
-from .parser import PDFParser
-from .processor import PDFProcessor
-from .item import PDFObject, PDFReference
+from dietpdf.parser.PDFParser import PDFParser
+from dietpdf.processor.PDFProcessor import PDFProcessor
+from dietpdf.item import PDFObject, PDFReference, PDFDictionary
 from dietpdf import __version__
 
 _logger = logging.getLogger("dietpdf")
@@ -58,7 +56,7 @@ def diet(input_pdf_name: str):
     )
 
     source_codes = set()
-    for _, object in processor.pdf.find(any_form_xobject):
+    for _, object in processor.tokens.find(any_form_xobject):
         source_codes.add(object.obj_num)
 
     any_contents = lambda _, item: (
@@ -68,7 +66,7 @@ def diet(input_pdf_name: str):
         type(item[b"Contents"]) == PDFReference
     )
 
-    for _, object in processor.pdf.find(any_contents):
+    for _, object in processor.tokens.find(any_contents):
         source_codes.add(object[b"Contents"].obj_num)
 
     any_type_xref = lambda _, item: (
@@ -76,7 +74,7 @@ def diet(input_pdf_name: str):
         type(item.value) == PDFDictionary and
         b"Type" in item and item[b"Type"] == b"XRef"
     )
-    if processor.pdf.find_first(any_type_xref):
+    if processor.tokens.find_first(any_type_xref):
         print(
             "Sorry, dietpdf doesn't know how to handle cross-reference "
             "objects for the moment!"
@@ -84,7 +82,7 @@ def diet(input_pdf_name: str):
         return
 
     any_object = lambda _, item: type(item) == PDFObject
-    for _, object in processor.pdf.find(any_object):
+    for _, object in processor.tokens.find(any_object):
         object.source_code = object.obj_num in source_codes
 
     # Optimize streams.
@@ -92,7 +90,7 @@ def diet(input_pdf_name: str):
     any_object_with_stream = lambda _, item: (
         type(item) == PDFObject and item.has_stream()
     )
-    for _, object in processor.pdf.find(any_object_with_stream):
+    for _, object in processor.tokens.find(any_object_with_stream):
         _logger.info("Optimizing object %d stream" % object.obj_num)
         object.optimize_stream()
 

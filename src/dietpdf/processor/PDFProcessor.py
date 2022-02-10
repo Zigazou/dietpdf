@@ -7,45 +7,49 @@ __email__ = "zigazou@protonmail.com"
 
 from logging import getLogger
 
-from ..item import (
-    PDFReference, PDFObjectID, PDFList, PDFDictionary, PDFXrefSubSection,
-    PDFName, PDFNumber, PDFObject, PDFTrailer, PDFStartXref, PDFXref,
-    PDFListOpen, PDFDictOpen, PDFCommand, PDFStream, PDFListClose, PDFDictClose,
-    PDFComment,
+from dietpdf.token import (
+    PDFNumber, PDFListOpen, PDFDictOpen, PDFCommand, PDFListClose,
+    PDFDictClose, PDFComment
 )
 
-from ..pdf import PDF
+from dietpdf.item import (
+    PDFReference, PDFObjectID, PDFList, PDFDictionary, PDFXrefSubSection,
+    PDFObject, PDFTrailer, PDFStartXref, PDFXref, PDFStream
+)
+
+from dietpdf.pdf import PDF
+from .TokenProcessor import TokenProcessor
+
 
 _logger = getLogger("PDFProcessor")
 
-class PDFProcessor:
+class PDFProcessor(TokenProcessor):
     """A PDF processor
 
     A PDF processor is a stack machine. It recognizes some command and executes
     them, changing the stack state.
     """
-
     def __init__(self):
-        self.pdf = PDF()
+        self.tokens = PDF()
 
     def _generate_reference(self):
-        gen_num = int(self.pdf.pop().value)
-        obj_num = int(self.pdf.pop().value)
-        self.pdf.push(PDFReference(obj_num, gen_num))
+        gen_num = int(self.tokens.pop().value)
+        obj_num = int(self.tokens.pop().value)
+        self.tokens.push(PDFReference(obj_num, gen_num))
 
     def _generate_object_id(self):
-        gen_num = int(self.pdf.pop().value)
-        obj_num = int(self.pdf.pop().value)
-        self.pdf.push(PDFObjectID(obj_num, gen_num))
+        gen_num = int(self.tokens.pop().value)
+        obj_num = int(self.tokens.pop().value)
+        self.tokens.push(PDFObjectID(obj_num, gen_num))
 
     def _generate_list(self):
         items = []
-        while self.pdf.stack_size() > 0:
-            current = self.pdf.pop()
+        while self.tokens.stack_size() > 0:
+            current = self.tokens.pop()
 
             if isinstance(current, PDFListOpen):
                 items.reverse()
-                self.pdf.push(PDFList(items))
+                self.tokens.push(PDFList(items))
                 return
 
             items.append(current)
@@ -53,28 +57,28 @@ class PDFProcessor:
     def _generate_dict(self):
         key_values = {}
 
-        while self.pdf.stack_size() > 0:
-            value = self.pdf.pop()
+        while self.tokens.stack_size() > 0:
+            value = self.tokens.pop()
 
             if isinstance(value, PDFDictOpen):
-                self.pdf.push(PDFDictionary(key_values))
+                self.tokens.push(PDFDictionary(key_values))
                 return
 
-            key = self.pdf.pop()
+            key = self.tokens.pop()
             key_values[key] = value
 
     def _generate_object(self):
-        stream = self.pdf.pop()
+        stream = self.tokens.pop()
 
         if isinstance(stream, PDFStream):
-            value = self.pdf.pop()
+            value = self.tokens.pop()
         else:
             value = stream
             stream = None
 
-        object_id = self.pdf.pop()
+        object_id = self.tokens.pop()
         object = PDFObject(object_id.obj_num, object_id.gen_num, value, stream)
-        self.pdf.push(object)
+        self.tokens.push(object)
 
     def _convert_startxref(self):
         any_startxref_command = lambda _, item: (
@@ -82,11 +86,11 @@ class PDFProcessor:
             item.command == b"startxref"
         )
 
-        for offset, _ in self.pdf.find(any_startxref_command):
-            self.pdf.pop(offset)
-            self.pdf.insert(
+        for offset, _ in self.tokens.find(any_startxref_command):
+            self.tokens.pop(offset)
+            self.tokens.insert(
                 offset,
-                PDFStartXref(self.pdf.pop(offset).value)
+                PDFStartXref(self.tokens.pop(offset).value)
             )
 
     def _convert_xref(self):
@@ -95,26 +99,26 @@ class PDFProcessor:
             item.command == b"xref"
         )
 
-        for offset, _ in self.pdf.find(any_xref_command):
-            self.pdf.pop(offset)
+        for offset, _ in self.tokens.find(any_xref_command):
+            self.tokens.pop(offset)
 
             xref = PDFXref()
 
-            while isinstance(self.pdf.stack_at(offset), PDFNumber):
-                base = self.pdf.pop(offset).value
-                count = self.pdf.pop(offset).value
+            while isinstance(self.tokens.stack_at(offset), PDFNumber):
+                base = self.tokens.pop(offset).value
+                count = self.tokens.pop(offset).value
                 subsection = PDFXrefSubSection(base, count)
 
                 for _ in range(count):
-                    ref_offset = self.pdf.pop(offset).value
-                    ref_new = self.pdf.pop(offset).value
-                    ref_type = self.pdf.pop(offset).command.decode('ascii')
+                    ref_offset = self.tokens.pop(offset).value
+                    ref_new = self.tokens.pop(offset).value
+                    ref_type = self.tokens.pop(offset).command.decode('ascii')
 
                     subsection.entries.append((ref_offset, ref_new, ref_type))
 
                 xref.subsections.append(subsection)
 
-            self.pdf.insert(offset, xref)
+            self.tokens.insert(offset, xref)
 
     def _convert_trailer(self):
         any_trailer_command = lambda _, item: (
@@ -122,9 +126,9 @@ class PDFProcessor:
             item.command == b"trailer"
         )
 
-        for offset, _ in self.pdf.find(any_trailer_command):
-            self.pdf.pop(offset)
-            self.pdf.insert(offset, PDFTrailer(self.pdf.pop(offset)))
+        for offset, _ in self.tokens.find(any_trailer_command):
+            self.tokens.pop(offset)
+            self.tokens.insert(offset, PDFTrailer(self.tokens.pop(offset)))
 
     def end_parsing(self):
         """Converts remaining items on the stack.
@@ -161,9 +165,9 @@ class PDFProcessor:
         elif type(item) == PDFComment:
             # Discard unneeded comments
             if item.content[:5] == b"%PDF-" or item.content[:5] == b"%%EOF":
-                self.pdf.push(item)
+                self.tokens.push(item)
         else:
-            self.pdf.push(item)
+            self.tokens.push(item)
 
     def update_xref(self, original: bytes):
         """Update all the XRef tables.
@@ -179,10 +183,10 @@ class PDFProcessor:
 
         # Changing offsets in an XREF table won't change its size
         any_xref_table = lambda _, item: type(item) == PDFXref
-        xrefs = self.pdf.find_all(any_xref_table)
+        xrefs = self.tokens.find_all(any_xref_table)
 
         any_startxref = lambda _, item: type(item) == PDFStartXref
-        startxrefs = self.pdf.find_all(any_startxref)
+        startxrefs = self.tokens.find_all(any_startxref)
 
         for xref in xrefs:
             for subsection in xref.subsections:
@@ -190,7 +194,7 @@ class PDFProcessor:
                 count = subsection.count
                 for index in range(count):
                     (ref_offset, ref_new, ref_type) = subsection.entries[index]
-                    object = self.pdf.get(base + index)
+                    object = self.tokens.get(base + index)
 
                     subsection.entries[index] = (
                         object.item_offset if ref_type == "n" else ref_offset,
@@ -209,7 +213,7 @@ class PDFProcessor:
             b"Linearized" in item.value
         )
 
-        linearized = self.pdf.find_first(any_linearized)
+        linearized = self.tokens.find_first(any_linearized)
         if linearized:
             items = linearized.value
 
@@ -221,7 +225,7 @@ class PDFProcessor:
             object_id = int(original[old_end:old_end + 10].split()[0])
 
             linearized.value[b"E"] = PDFNumber(
-                str(self.pdf.get(object_id).item_offset).encode('ascii')
+                str(self.tokens.get(object_id).item_offset).encode('ascii')
             )
 
             # Update offset of first entry in main xref table
@@ -233,7 +237,7 @@ class PDFProcessor:
 
         # Update first trailer
         any_trailer = lambda _, item: type(item) == PDFTrailer
-        trailer = self.pdf.find_first(any_trailer)
+        trailer = self.tokens.find_first(any_trailer)
         if trailer and xrefs:
             trailer.dictionary[b"Prev"] = (
                 PDFNumber(str(xrefs[0].item_offset).encode('ascii'))
@@ -241,30 +245,19 @@ class PDFProcessor:
 
     def encode(self) -> bytes:
         """Encode a PDF from the current state of the processor
-        
+
         :return: A complete PDF file content ready to be written in a file
         :rtype: bytes
         """
-        any_item = lambda _a, _b: True
+        def any_item(_a, _b): return True
 
         output = b""
         offset = 0
 
-        for _, item in self.pdf.find(any_item):
+        for _, item in self.tokens.find(any_item):
             item.item_offset = offset
             item_encoded = item.encode()
             offset += len(item_encoded)
             output += item_encoded
 
         return output
-
-    def pretty_print(self):
-        """Pretty print the stack of the processor
-        
-        It uses the logging mechanisme at the debug level.
-        """
-        _logger.debug("Stack state:")
-
-        any_item = lambda _a, _b: True
-        for _, item in self.pdf.find(any_item):
-            _logger.debug("- %s" % (item.pretty(),))

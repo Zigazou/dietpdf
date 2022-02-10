@@ -5,7 +5,10 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
-from . import PDFItem, PDFDictionary, PDFList, PDFObject
+from .PDFItem import PDFItem
+from .PDFDictionary import PDFDictionary
+from .PDFList import PDFList
+from .PDFObject import PDFObject
 
 
 def deep_find(item: PDFItem, select: callable) -> list:

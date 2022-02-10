@@ -19,9 +19,9 @@ import argparse
 import logging
 import sys
 
-from .parser import PDFParser
-from .processor import PDFProcessor
-from .item import PDFObject, PDFDictionary
+from dietpdf.parser.PDFParser import PDFParser
+from dietpdf.processor.PDFProcessor import PDFProcessor
+from dietpdf.item import PDFObject, PDFDictionary
 from dietpdf import __version__
 
 _logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ def infopdf(input_pdf_name: str):
     parser.parse(pdf_file_content)
     processor.end_parsing()
 
-    pdf = processor.pdf
+    pdf = processor.tokens
 
     # Print all hyperlinks.
     def any_link(_, item): return (

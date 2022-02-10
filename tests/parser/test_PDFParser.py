@@ -1,11 +1,10 @@
 from random import seed, randrange, choice
 from zlib import decompress
 
-from dietpdf.parser import PDFParser
-from dietpdf.processor import PDFProcessor
-from dietpdf.item import (
-    PDFString, PDFObject, PDFHexString, PDFNumber, PDFComment
-)
+from dietpdf.parser.PDFParser import PDFParser
+from dietpdf.processor.PDFProcessor import PDFProcessor
+from dietpdf.token import PDFString, PDFHexString, PDFNumber
+from dietpdf.item import PDFObject
 
 __author__ = "Frédéric BISSON"
 __copyright__ = "Copyright 2022, Frédéric BISSON"
@@ -32,11 +31,11 @@ def test_PDFParser_stream():
 
         parser.parse(pdf_stream)
 
-        assert processor.pdf.stack_size() == 1
-        assert isinstance(processor.pdf.stack_at(0), PDFObject)
-        assert processor.pdf.stack_at(0).has_stream()
-        assert len(processor.pdf.stack_at(0).stream) == len(raw_data)
-        assert processor.pdf.stack_at(0).stream == raw_data
+        assert processor.tokens.stack_size() == 1
+        assert isinstance(processor.tokens.stack_at(0), PDFObject)
+        assert processor.tokens.stack_at(0).has_stream()
+        assert len(processor.tokens.stack_at(0).stream) == len(raw_data)
+        assert processor.tokens.stack_at(0).stream == raw_data
 
 
 def test_PDFParser_hexstring():
@@ -56,9 +55,9 @@ def test_PDFParser_hexstring():
 
         parser.parse(hexstring_test)
 
-        assert processor.pdf.stack_size() == 1
-        assert isinstance(processor.pdf.stack_at(0), PDFHexString)
-        assert len(processor.pdf.stack_at(0).hexstring) == len(hexstring_test) - 2
+        assert processor.tokens.stack_size() == 1
+        assert isinstance(processor.tokens.stack_at(0), PDFHexString)
+        assert len(processor.tokens.stack_at(0).hexstring) == len(hexstring_test) - 2
 
 
 def test_PDFParser_string():
@@ -76,9 +75,9 @@ def test_PDFParser_string():
 
         parser.parse(string_test)
 
-        assert processor.pdf.stack_size() == 1
-        assert isinstance(processor.pdf.stack_at(0), PDFString)
-        assert len(processor.pdf.stack_at(0).string) == len(string_test) - 2
+        assert processor.tokens.stack_size() == 1
+        assert isinstance(processor.tokens.stack_at(0), PDFString)
+        assert len(processor.tokens.stack_at(0).string) == len(string_test) - 2
 
 
 def test_PDFParser_integer():
@@ -97,9 +96,9 @@ def test_PDFParser_integer():
 
         parser.parse(integer_test)
 
-        assert processor.pdf.stack_size() == 1
-        assert isinstance(processor.pdf.stack_at(0), PDFNumber)
-        assert type(processor.pdf.stack_at(0).value) == int
+        assert processor.tokens.stack_size() == 1
+        assert isinstance(processor.tokens.stack_at(0), PDFNumber)
+        assert type(processor.tokens.stack_at(0).value) == int
 
 
 def test_PDFParser_float():
@@ -121,9 +120,9 @@ def test_PDFParser_float():
 
         parser.parse(float_test)
 
-        assert processor.pdf.stack_size() == 1
-        assert isinstance(processor.pdf.stack_at(0), PDFNumber)
-        assert type(processor.pdf.stack_at(0).value) == float
+        assert processor.tokens.stack_size() == 1
+        assert isinstance(processor.tokens.stack_at(0), PDFNumber)
+        assert type(processor.tokens.stack_at(0).value) == float
 
 
 def test_PDFParser_comment():
@@ -141,4 +140,4 @@ def test_PDFParser_comment():
         parser.parse(pdf_stream)
 
         # Comments other than %PDF* and %%EOF are discarded
-        assert processor.pdf.stack_size() == 0
+        assert processor.tokens.stack_size() == 0

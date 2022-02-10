@@ -5,8 +5,9 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
+from dietpdf.token import PDFToken, PDFName
+
 from .PDFItem import PDFItem
-from .PDFName import PDFName
 
 
 # Hints when there is no need to insert a space between a PDFName and a value
@@ -35,7 +36,7 @@ class PDFDictionary(PDFItem):
 
           - equal to any other PDFDictionary with the same dictionary
           - equal to dictionary with the same dictionary
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFDictionary with anything else is not implemented.
 
@@ -48,7 +49,7 @@ class PDFDictionary(PDFItem):
             return self.items == other.items
         elif isinstance(other, dict):
             return self.items == other
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented

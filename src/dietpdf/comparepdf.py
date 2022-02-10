@@ -22,9 +22,9 @@ import re
 
 from dietpdf.item import PDFDictionary
 
-from .parser import PDFParser
-from .processor import PDFProcessor
-from .item import PDFObject, PDFReference
+from dietpdf.parser import PDFParser
+from dietpdf.processor import PDFProcessor
+from dietpdf.item import PDFObject, PDFReference
 from dietpdf import __version__
 
 _logger = logging.getLogger("dietpdf")
@@ -38,11 +38,11 @@ def pdfcompare(first_pdf: str, second_pdf: str):
       second_pdf (str): second PDF path
     """
 
-    output_pdf_name = re.sub("\.pdf$", ".opt.pdf", input_pdf_name)
+    output_pdf_name = re.sub("\.pdf$", ".opt.pdf", first_pdf)
 
     # Read PDF.
-    _logger.info("Reading %s" % input_pdf_name)
-    pdf_file_content = open(input_pdf_name, "rb").read()
+    _logger.info("Reading %s" % first_pdf)
+    pdf_file_content = open(first_pdf, "rb").read()
     processor = PDFProcessor()
     parser = PDFParser(processor)
     parser.parse(pdf_file_content)
@@ -160,7 +160,7 @@ def main(args):
     setup_logging(args.loglevel)
     _logger.info("Start optimizing PDF %s" % args.input_pdf)
 
-    diet(args.input_pdf)
+    pdfcompare(args.input_pdf)
 
 
 def run():

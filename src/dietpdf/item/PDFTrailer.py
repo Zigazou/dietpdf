@@ -5,6 +5,8 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
+from dietpdf.token import PDFToken
+
 from .PDFItem import PDFItem
 from .PDFDictionary import PDFDictionary
 
@@ -30,7 +32,7 @@ class PDFTrailer(PDFItem):
 
           - equal to any other PDFTrailer with the same object and dictionary
           - equal to any dictionary with the same dictionary
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFTrailer with anything else is not implemented.
 
@@ -43,7 +45,7 @@ class PDFTrailer(PDFItem):
             return self.dictionary == other.dictionary
         elif isinstance(other, dict):
             return self.dictionary == other
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented

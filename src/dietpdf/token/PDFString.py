@@ -5,7 +5,7 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
-from .PDFItem import PDFItem
+from .PDFToken import PDFToken
 
 
 # The following constants are used by the unescape function.
@@ -120,7 +120,7 @@ def unescape(string: bytes) -> bytes:
     return unescaped
 
 
-class PDFString(PDFItem):
+class PDFString(PDFToken):
     """A PDF string (between ( and ) )"""
 
     def __init__(self, string: bytes):
@@ -152,7 +152,7 @@ class PDFString(PDFItem):
             return self.string == other.string
         elif isinstance(other, bytes):
             return self.string == other
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented

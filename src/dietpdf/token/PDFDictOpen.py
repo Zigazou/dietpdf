@@ -5,10 +5,10 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
-from .PDFItem import PDFItem
+from .PDFToken import PDFToken
 
 
-class PDFDictOpen(PDFItem):
+class PDFDictOpen(PDFToken):
     """Opening of a PDF dictionary (<<)
 
     A `PDFDictOpen` should be removed from the stack upon creation of a
@@ -21,7 +21,7 @@ class PDFDictOpen(PDFItem):
         A PDFDictOpen is:
 
           - equal to any other PDFDictOpen
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFDictOpen with anything else is not implemented.
 
@@ -32,7 +32,7 @@ class PDFDictOpen(PDFItem):
         """
         if isinstance(other, PDFDictOpen):
             return True
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented
@@ -40,3 +40,6 @@ class PDFDictOpen(PDFItem):
     def __bool__(self):
         """A PDFDictOpen is always True"""
         return True
+
+    def encode(self) -> bytes:
+        return b"<<"

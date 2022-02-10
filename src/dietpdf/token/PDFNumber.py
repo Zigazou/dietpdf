@@ -5,10 +5,10 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
-from .PDFItem import PDFItem
+from .PDFToken import PDFToken
 
 
-class PDFNumber(PDFItem):
+class PDFNumber(PDFToken):
     """A PDF number (either an integer or a float)"""
 
     def __init__(self, value):
@@ -26,7 +26,7 @@ class PDFNumber(PDFItem):
 
           - equal to any other PDFNumber with the same number
           - equal to any number (int or float) with the same value
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFNumber with anything else is not implemented.
 
@@ -39,7 +39,7 @@ class PDFNumber(PDFItem):
             return self.value == other.value
         elif isinstance(other, int) or isinstance(other, float):
             return self.value == other
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented
@@ -58,4 +58,9 @@ class PDFNumber(PDFItem):
         return self._pretty("Number(%s)" % (self.value,))
 
     def encode(self) -> bytes:
-        return str(self.value).encode('ascii')
+        human = str(self.value)
+
+        if len(human) > 1 and human[0] == "0":
+            human = human[1:]
+
+        return human.encode('ascii')

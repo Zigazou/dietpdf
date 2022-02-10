@@ -5,6 +5,8 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
+from dietpdf.token import PDFToken
+
 from .PDFItem import PDFItem
 
 # Hints when there is no need to insert a space between two items when encoding.
@@ -69,7 +71,7 @@ class PDFList(PDFItem):
 
           - equal to any other PDFList with the same list
           - equal to list with the same list
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFList with anything else is not implemented.
 
@@ -82,7 +84,7 @@ class PDFList(PDFItem):
             return self.items == other.items
         elif isinstance(other, list):
             return self.items == other
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented

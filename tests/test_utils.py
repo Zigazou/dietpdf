@@ -1,7 +1,6 @@
 from random import seed, randrange
 
 from dietpdf.utils import multiplications, multiples, prime_factors_of
-from dietpdf.item import PDFItem, PDFDictOpen
 
 __author__ = "Frédéric BISSON"
 __copyright__ = "Copyright 2022, Frédéric BISSON"

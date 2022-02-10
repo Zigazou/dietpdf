@@ -5,10 +5,10 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
-from .PDFItem import PDFItem
+from .PDFToken import PDFToken
 
 
-class PDFComment(PDFItem):
+class PDFComment(PDFToken):
     """A PDF comment.
 
     It starts with a "%" and ends with a newline (either `\\r\\n` or `\\n`)
@@ -30,7 +30,7 @@ class PDFComment(PDFItem):
 
           - equal to any other PDFComment with the same byte string
           - equal to any byte string with the same byte string
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFComment with anything else is not implemented.
 
@@ -43,7 +43,7 @@ class PDFComment(PDFItem):
             return self.content == other.content
         elif isinstance(other, bytes):
             return self.content == other
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented

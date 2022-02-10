@@ -5,7 +5,10 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
+from dietpdf.token import PDFToken
+
 from .PDFItem import PDFItem
+
 
 class PDFObjectEnd(PDFItem):
     """End of a PDF object"""
@@ -16,7 +19,7 @@ class PDFObjectEnd(PDFItem):
         A PDFObjectEnd is:
 
           - equal to any other PDFObjectEnd
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFObjectEnd with anything else is not implemented.
 
@@ -27,7 +30,7 @@ class PDFObjectEnd(PDFItem):
         """
         if isinstance(other, PDFObjectEnd):
             return True
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented
@@ -35,3 +38,6 @@ class PDFObjectEnd(PDFItem):
     def __bool__(self):
         """A PDFObjectEnd is always True."""
         return True
+
+    def encode(self) -> bytes:
+        return b"endobj"

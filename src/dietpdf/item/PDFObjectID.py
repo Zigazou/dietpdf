@@ -5,6 +5,8 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
+from dietpdf.token import PDFToken
+
 from .PDFItem import PDFItem
 
 
@@ -34,7 +36,7 @@ class PDFObjectID(PDFItem):
             generation number
           - equal to a tuple (int, int) with the same object number and
             generation number
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFObjectID with anything else (including tuple with more
         than 2 elements) is not implemented.
@@ -54,7 +56,7 @@ class PDFObjectID(PDFItem):
                 return self.obj_num == other[0] and self.gen_num == other[1]
             else:
                 return NotImplemented
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented
@@ -65,3 +67,6 @@ class PDFObjectID(PDFItem):
 
     def pretty(self) -> str:
         return self._pretty("ObjectID(%d,%d)" % (self.obj_num, self.gen_num))
+
+    def encode(self) -> bytes:
+        return b"%d %d obj" % (self.obj_num, self.gen_num)

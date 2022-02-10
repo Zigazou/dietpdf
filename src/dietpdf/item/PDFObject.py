@@ -8,17 +8,18 @@ __email__ = "zigazou@protonmail.com"
 from zlib import compress, decompress
 from logging import getLogger
 
+from dietpdf.filter import (
+    zopfli_deflate, rle_encode, predictor_png_decode, jpegtran_optimize
+)
+
+from dietpdf.token import PDFToken, PDFName, PDFNumber
+
+from .content_stream import optimize_content_stream
 from .PDFItem import PDFItem
-from .PDFName import PDFName
 from .PDFStream import PDFStream
 from .PDFList import PDFList
 from .PDFNull import PDFNull
-from .PDFNumber import PDFNumber
 from .PDFDictionary import PDFDictionary
-from ..filter.zopfli import zopfli_deflate
-from ..filter.rle import rle_encode
-from ..filter.predictor import predictor_png_decode, predictor_png_encode
-from ..filter.jpegoptim import jpegtran_optimize
 
 _logger = getLogger("PDFObject")
 
@@ -31,7 +32,7 @@ class PDFObject(PDFItem):
     def __init__(self, obj_num: int, gen_num: int, value, stream: PDFStream):
         assert type(obj_num) == int
         assert type(gen_num) == int
-        assert isinstance(value, PDFItem)
+        assert isinstance(value, PDFToken)
         assert stream == None or type(stream) == PDFStream
 
         self.obj_num = obj_num
@@ -53,7 +54,7 @@ class PDFObject(PDFItem):
 
           - equal to any other PDFObject with the same object and generation
             numbers, the same value and the same stream
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFObject with anything else is not implemented.
 
@@ -69,7 +70,7 @@ class PDFObject(PDFItem):
                 self.value == other.value and
                 self.stream == other.stream
             )
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented
@@ -161,7 +162,7 @@ class PDFObject(PDFItem):
             return b""
 
         # Retrieve filter(s)
-        filters = self[b"Filters"] if b"Filters" in self else None
+        filters = self[b"Filter"] if b"Filter" in self else None
         if not filters:
             # The stream needs not to be filtered
             return self.stream.stream
@@ -220,7 +221,7 @@ class PDFObject(PDFItem):
             _logger.debug(
                 "Optimize source code on object %d" % self.obj_num
             )
-            stream = stream.replace(b"\n", b" ")
+            stream = optimize_content_stream(stream)
 
         key_dct_decode = PDFName(b"DCTDecode")
         key_flate_decode = PDFName(b"FlateDecode")

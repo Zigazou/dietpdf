@@ -5,6 +5,8 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
+from dietpdf.token import PDFToken
+
 from .PDFItem import PDFItem
 
 
@@ -17,7 +19,7 @@ class PDFNull(PDFItem):
         A PDFNull is:
 
           - equal to any other PDFNull
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFNull with anything else is not implemented.
 
@@ -28,7 +30,7 @@ class PDFNull(PDFItem):
         """
         if isinstance(other, PDFNull) or other == None:
             return True
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented

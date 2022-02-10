@@ -1,6 +1,5 @@
-from dietpdf.item import (
-    PDFObject, PDFDictionary, PDFReference, PDFName, PDFString
-)
+from dietpdf.token import PDFName, PDFString
+from dietpdf.item import PDFObject, PDFDictionary, PDFReference
 
 from dietpdf.info.content_objects import content_objects
 

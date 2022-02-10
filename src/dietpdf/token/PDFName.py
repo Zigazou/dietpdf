@@ -5,9 +5,9 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
-from .PDFItem import PDFItem
+from .PDFToken import PDFToken
 
-class PDFName(PDFItem):
+class PDFName(PDFToken):
     """A PDF name (starting with /)"""
 
     def __init__(self, name):
@@ -54,7 +54,7 @@ class PDFName(PDFItem):
         
           - equal to any other PDFName with the same byte string
           - equal to any byte string with the same byte string
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFName with anything else is not implemented.
 
@@ -67,7 +67,7 @@ class PDFName(PDFItem):
             return self.name == other.name
         elif type(other) == bytes:
             return self.name == other
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented

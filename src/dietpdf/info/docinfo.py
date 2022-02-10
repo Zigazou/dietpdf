@@ -7,8 +7,8 @@ __email__ = "zigazou@protonmail.com"
 
 import logging
 
-from ..item import PDFReference, PDFDictionary
-from ..processor import PDFProcessor
+from dietpdf.item import PDFDictionary
+from dietpdf.processor import PDFProcessor
 
 _logger = logging.getLogger("content_objects")
 
@@ -41,7 +41,6 @@ def docinfo(pdf: PDFProcessor) -> dict:
         root_object = pdf.objects[root]
 
         if b"Pages" in root_object:
-            
-
+            pass
 
     return info

@@ -5,10 +5,10 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
-from .PDFItem import PDFItem
+from .PDFToken import PDFToken
 
 
-class PDFListClose(PDFItem):
+class PDFListClose(PDFToken):
     """Closing of a PDF list (])
 
     Upon pushing on a stack, this item should initiate the creation of a
@@ -21,7 +21,7 @@ class PDFListClose(PDFItem):
         A PDFListClose is:
 
           - equal to any other PDFListClose
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFListClose with anything else is not implemented.
 
@@ -32,7 +32,7 @@ class PDFListClose(PDFItem):
         """
         if isinstance(other, PDFListClose):
             return True
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented
@@ -40,3 +40,6 @@ class PDFListClose(PDFItem):
     def __bool__(self):
         """A PDFListClose is always True."""
         return True
+
+    def encode(self) -> bytes:
+        return b"]"

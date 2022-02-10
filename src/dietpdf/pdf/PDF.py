@@ -5,39 +5,34 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
-from ..item import (
+from dietpdf.token import TokenStack
+from dietpdf.item import (
     PDFReference, PDFList, PDFDictionary, PDFObject, PDFItem
 )
 
 
-class PDF:
+class PDF(TokenStack):
     """A PDF document
 
     A PDF document which can be read or written.
     """
 
     def __init__(self):
-        self.stack = []
+        super().__init__()
         self.objects = {}
 
     def insert(self, index: int, item: PDFItem):
         """Insert a PDFItem at specified index.
 
-        Any number of PDFItem may be pushed but PDFObject may only be pushed
-        once.
+        Any number of PDFItem may be pushed.
 
         :param item: The item to insert
         :type item: PDFItem or any subclass of PDFItem
         :param index: The index where to insert the item
         :type index: int
         :raise TypeError: If `item` is not a PDFItem or any subclass of PDFItem
-        :raise DuplicateError: If `item` is an object that has already been
-            pushed.
         """
-        if not isinstance(item, PDFItem):
-            raise TypeError("expected PDFItem or any subclass")
-
-        self.stack.insert(index, item)
+        super().insert(index, item)
 
         if type(item) == PDFObject:
             self.objects[item.obj_num] = item
@@ -52,10 +47,7 @@ class PDF:
         :type item: PDFItem or any subclass of PDFItem
         :raise TypeError: If `item` is not a PDFItem or any subclass of PDFItem
         """
-        if not isinstance(item, PDFItem):
-            raise TypeError("expected PDFItem or any subclass")
-
-        self.stack.append(item)
+        super().push(item)
 
         if type(item) == PDFObject:
             self.objects[item.obj_num] = item
@@ -69,32 +61,13 @@ class PDF:
         :rtype: PDFItem or any subclass of PDFItem
         :raise IndexError: If there is no more PDFItem to pop
         """
-        try:
-            item = self.stack.pop(index)
-        except IndexError:
-            raise IndexError("pop from empty PDF")
+        item = super().pop(index)
 
         # Remove the item from the objects
         if isinstance(item, PDFObject) and item.obj_num in self.objects:
             del(self.objects[item.obj_num])
 
         return item
-
-    def stack_size(self) -> int:
-        """Returns the stack size of the PDF
-
-        :return: Stack size of the PDF
-        :rtype: int
-        """
-        return len(self.stack)
-
-    def stack_at(self, index: int) -> PDFItem:
-        """Get the element on the stack at the specified index.
-
-        :param index: The index
-        :type index: int
-        """
-        return self.stack[index]
 
     def get(self, obj_num: int, path=[]) -> PDFItem:
         """Given an object given a starting object number and a path.
@@ -156,68 +129,3 @@ class PDF:
             return None
         else:
             return value
-
-    def find(self, select: callable, start: int = 0):
-        """Find an item in the stack according to a predicate.
-
-        The predicate should have the following signature:
-
-            predicate(index: int, item: PDFItem) -> bool
-
-        Where:
-
-          - index is the index of the item in the stack, not its object number
-          - item is a PDFItem or any subclass
-          - the predicate must return True if the item meets the criteria
-
-        :param select: The predicate
-        :type select: function
-        :param start: the starting index
-        :type start: int
-        :raise TypeError: If the predicate is not a function
-        """
-        if not callable(select):
-            raise TypeError("select must be a function which returns a boolean")
-
-        index = start
-        while index < len(self.stack):
-            item = self.stack[index]
-
-            if select(index, item):
-                yield (index, item)
-
-            index += 1
-
-    def find_all(self, select: callable, start: int = 0) -> list:
-        """Find an item in the stack according to a predicate.
-
-        See the `find` method for information about the predicate.
-
-        :param select: The predicate
-        :type select: function
-        :param start: the starting index
-        :type start: int
-        :raise TypeError: If the predicate is not a function
-        :return: A list of PDFItem satisfying the predicate
-        :rtype: list
-        """
-
-        return [item for _, item in self.find(select, start)]
-
-    def find_first(self, select: callable, start: int = 0) -> PDFItem:
-        """Find an item in the stack according to a predicate.
-
-        See the `find` method for information about the predicate.
-
-        :param select: The predicate
-        :type select: function
-        :param start: the starting index
-        :type start: int
-        :raise TypeError: If the predicate is not a function
-        :return: The first item satisfying the predicate
-        :rtype: PDFItem or None
-        """
-        for index, item in self.find(select, start):
-            return item
-
-        return None

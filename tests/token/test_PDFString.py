@@ -1,4 +1,4 @@
-from dietpdf.item.PDFString import unescape, PDFString
+from dietpdf.token.PDFString import unescape, PDFString
 
 __author__ = "Frédéric BISSON"
 __copyright__ = "Copyright 2022, Frédéric BISSON"

@@ -1,11 +1,11 @@
 import pytest
 
+from dietpdf.token import PDFName, PDFString, PDFNumber, PDFComment
 from dietpdf.item import (
-    PDFObject, PDFDictionary, PDFReference, PDFName, PDFString, PDFNumber,
-    PDFList, PDFComment, PDFNull
+    PDFObject, PDFDictionary, PDFReference, PDFList, PDFNull
 )
 
-from dietpdf.pdf import PDF
+from dietpdf.pdf.PDF import PDF
 
 __author__ = "Frédéric BISSON"
 __copyright__ = "Copyright 2022, Frédéric BISSON"

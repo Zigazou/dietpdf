@@ -19,10 +19,10 @@ import argparse
 import logging
 import sys
 
-from .parser import PDFParser
-from .processor import PDFProcessor
-from .item import PDFReference, PDFObject, PDFDictionary
-from .info import content_objects
+from dietpdf.parser.PDFParser import PDFParser
+from dietpdf.processor.PDFProcessor import PDFProcessor
+from dietpdf.item import PDFReference, PDFObject, PDFDictionary
+from dietpdf.info import content_objects
 from dietpdf import __version__
 
 _logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ def extractpdf(input_pdf_name: str, base: str):
         item[b"Subtype"] == b"Form"
     )
 
-    for _, object in processor.pdf.find(any_form_xobject):
+    for _, object in processor.tokens.find(any_form_xobject):
         content_objects_set.add(object.obj_num)
 
     any_contents = lambda _, item: (
@@ -65,7 +65,7 @@ def extractpdf(input_pdf_name: str, base: str):
         type(item[b"Contents"]) == PDFReference
     )
 
-    for _, object in processor.pdf.find(any_contents):
+    for _, object in processor.tokens.find(any_contents):
         content_objects_set.add(object[b"Contents"].obj_num)
 
     # Extract all available streams
@@ -73,7 +73,7 @@ def extractpdf(input_pdf_name: str, base: str):
         type(item) == PDFObject and
         item.stream != None        
     )
-    for object_id, object in processor.pdf.find(any_object_with_stream):
+    for object_id, object in processor.tokens.find(any_object_with_stream):
         extension = "raw"
         width = None
         height = None

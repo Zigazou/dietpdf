@@ -5,6 +5,8 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
+from dietpdf.token import PDFToken
+
 from .PDFItem import PDFItem
 
 
@@ -26,7 +28,7 @@ class PDFStartXref(PDFItem):
 
           - equal to any other PDFStartXref with the same offset
           - equal to any int with the same value as the offset
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFStartXref with anything else is not implemented.
 
@@ -39,7 +41,7 @@ class PDFStartXref(PDFItem):
             return self.offset == other.offset
         elif isinstance(other, int):
             return self.offset == other
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented

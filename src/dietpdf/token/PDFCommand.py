@@ -5,10 +5,10 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
-from .PDFItem import PDFItem
+from .PDFToken import PDFToken
 
 
-class PDFCommand(PDFItem):
+class PDFCommand(PDFToken):
     """A PDF command.
 
     Contrary to a PDF name (starting with a "/"), a PDF command may imply an
@@ -37,7 +37,7 @@ class PDFCommand(PDFItem):
 
           - equal to any other PDFCommand with the same byte string
           - equal to any byte string with the same byte string
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFCommand with anything else is not implemented.
 
@@ -50,7 +50,7 @@ class PDFCommand(PDFItem):
             return self.command == other.command
         elif isinstance(other, bytes):
             return self.command == other
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented

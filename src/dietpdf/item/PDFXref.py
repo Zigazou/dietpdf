@@ -5,6 +5,8 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
+from dietpdf.token import PDFToken
+
 from .PDFItem import PDFItem
 
 
@@ -31,7 +33,7 @@ class PDFXref(PDFItem):
 
           - equal to any other PDFXref with the same subsections
           - equal to any list of subsections with the same subsections
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFXref with anything else is not implemented.
 
@@ -44,7 +46,7 @@ class PDFXref(PDFItem):
             return self.subsections == other.subsections
         elif isinstance(other, list):
             return self.subsections == other
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented

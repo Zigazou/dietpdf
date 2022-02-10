@@ -7,6 +7,8 @@ __email__ = "zigazou@protonmail.com"
 
 from zlib import decompress
 
+from dietpdf.token import PDFToken
+
 from .PDFItem import PDFItem
 
 
@@ -31,7 +33,7 @@ class PDFStream(PDFItem):
 
           - equal to any other PDFStream with the same byte string
           - equal to any byte string with the same byte string
-          - different from any other PDFItem subclass
+          - different from any other PDFToken subclass
 
         Comparing a PDFStream with anything else is not implemented.
 
@@ -44,7 +46,7 @@ class PDFStream(PDFItem):
             return self.stream == other.stream
         elif isinstance(other, bytes):
             return self.stream == other
-        elif isinstance(other, PDFItem):
+        elif isinstance(other, PDFToken):
             return False
         else:
             return NotImplemented
