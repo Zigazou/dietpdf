@@ -8,10 +8,10 @@ __email__ = "zigazou@protonmail.com"
 
 from dietpdf.parser.PDFParser import PDFParser
 from dietpdf.processor.PDFProcessor import PDFProcessor
-from dietpdf.info import all_uri
+from dietpdf.info import all_source_codes
 
 
-def test_all_uri():
+def test_all_source_codes():
     pdf_file_content = open(
         "pdf-examples/libreoffice-writer-hyperlink.pdf", "rb"
     ).read()
@@ -21,11 +21,8 @@ def test_all_uri():
     parser.parse(pdf_file_content)
     processor.end_parsing()
 
-    expected_result = [
-        "https://www.example.com/1",
-        "https://www.example.com/2"
-    ]
+    expected_result = [2, 16]
 
-    uris = sorted(all_uri(processor.tokens))
+    source_codes = sorted(all_source_codes(processor.tokens))
 
-    assert uris == expected_result
+    assert source_codes == expected_result

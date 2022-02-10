@@ -22,7 +22,8 @@ import re
 
 from dietpdf.parser.PDFParser import PDFParser
 from dietpdf.processor.PDFProcessor import PDFProcessor
-from dietpdf.item import PDFObject, PDFReference, PDFDictionary
+from dietpdf.item import PDFObject, PDFDictionary
+from dietpdf.info import all_source_codes, convert_objstm
 from dietpdf import __version__
 
 _logger = logging.getLogger("dietpdf")
@@ -44,42 +45,9 @@ def diet(input_pdf_name: str):
     parser = PDFParser(processor)
     parser.parse(pdf_file_content)
     processor.end_parsing()
+    convert_objstm(processor.tokens)
 
-    # Find all source code streams
-    any_form_xobject = lambda _, item: (
-        type(item) == PDFObject and
-        type(item.value) == PDFDictionary and
-        b"Type" in item and
-        item[b"Type"] == b"XObject" and
-        b"Subtype" in item and
-        item[b"Subtype"] == b"Form"
-    )
-
-    source_codes = set()
-    for _, object in processor.tokens.find(any_form_xobject):
-        source_codes.add(object.obj_num)
-
-    any_contents = lambda _, item: (
-        type(item) == PDFObject and
-        type(item.value) == PDFDictionary and
-        b"Contents" in item and
-        type(item[b"Contents"]) == PDFReference
-    )
-
-    for _, object in processor.tokens.find(any_contents):
-        source_codes.add(object[b"Contents"].obj_num)
-
-    any_type_xref = lambda _, item: (
-        type(item) == PDFObject and
-        type(item.value) == PDFDictionary and
-        b"Type" in item and item[b"Type"] == b"XRef"
-    )
-    if processor.tokens.find_first(any_type_xref):
-        print(
-            "Sorry, dietpdf doesn't know how to handle cross-reference "
-            "objects for the moment!"
-        )
-        return
+    source_codes = all_source_codes(processor.tokens)
 
     any_object = lambda _, item: type(item) == PDFObject
     for _, object in processor.tokens.find(any_object):
@@ -87,9 +55,9 @@ def diet(input_pdf_name: str):
 
     # Optimize streams.
     _logger.info("Start optimizing objects and streams")
-    any_object_with_stream = lambda _, item: (
-        type(item) == PDFObject and item.has_stream()
-    )
+    def any_object_with_stream(_, item):
+        return type(item) == PDFObject and item.has_stream()
+
     for _, object in processor.tokens.find(any_object_with_stream):
         _logger.info("Optimizing object %d stream" % object.obj_num)
         object.optimize_stream()
@@ -98,7 +66,8 @@ def diet(input_pdf_name: str):
     _logger.info("Updating cross-reference table")
     processor.update_xref(pdf_file_content)
     _logger.info("Writing optimized PDF in %s" % output_pdf_name)
-    open(output_pdf_name, "wb").write(processor.encode())
+    #open(output_pdf_name, "wb").write(processor.encode())
+    open(output_pdf_name, "wb").write(processor.reencode())
 
     processor.pretty_print()
 

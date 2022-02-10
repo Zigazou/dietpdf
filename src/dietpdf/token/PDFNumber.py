@@ -58,7 +58,10 @@ class PDFNumber(PDFToken):
         return self._pretty("Number(%s)" % (self.value,))
 
     def encode(self) -> bytes:
-        human = str(self.value)
+        if type(self.value) == int:
+            human = str(self.value)
+        else:
+            human = str(round(self.value, 2))
 
         if len(human) > 1 and human[0] == "0":
             human = human[1:]

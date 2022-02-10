@@ -9,7 +9,7 @@ from logging import getLogger
 
 from dietpdf.token import (
     PDFNumber, PDFListOpen, PDFDictOpen, PDFCommand, PDFListClose,
-    PDFDictClose, PDFComment
+    PDFDictClose, PDFComment, PDFName
 )
 
 from dietpdf.item import (
@@ -259,5 +259,109 @@ class PDFProcessor(TokenProcessor):
             item_encoded = item.encode()
             offset += len(item_encoded)
             output += item_encoded
+
+        return output
+
+    def reencode(self) -> bytes:
+        """Encode a PDF from the current state of the processor
+
+        :return: A complete PDF file content ready to be written in a file
+        :rtype: bytes
+        """
+
+        # Detect linearization
+        def any_linearized(_, item):
+            return (
+                type(item) == PDFObject and
+                type(item.value) == PDFDictionary and
+                b"Linearized" in item
+            )
+
+        linearized = self.tokens.find_first(any_linearized)
+
+        # Encode each object.
+        def any_object(_, item):
+            if type(item) != PDFObject:
+                return False
+
+            if type(item.value) == PDFDictionary:
+                if b"Type" in item and item[b"Type"] == b"XRef":
+                    return False
+
+                if b"Type" in item and item[b"Type"] == b"ObjStm":
+                    return False
+
+                if b"Linearized" in item:
+                    return False
+
+            return True
+
+        output = PDFComment(b"%PDF-1.7").encode()
+        offset = len(output)
+
+        # Write every object
+        xref_entries = {}
+        max_obj_num = 0
+        for _, item in self.tokens.find(any_object):
+            item.item_offset = offset
+            xref_entries[item.obj_num] = (offset, 0, "n")
+            max_obj_num = max(max_obj_num, item.obj_num)
+
+            item_encoded = item.encode()
+            offset += len(item_encoded)
+            output += item_encoded
+
+        # Write the XRef table
+        xref_subsection = PDFXrefSubSection(0, max_obj_num + 1)
+        for index in range(max_obj_num + 1):
+            if index in xref_entries:
+                xref_subsection.entries.append(xref_entries[index])
+            else:
+                xref_subsection.entries.append((0, 65535, "f"))
+
+        xref = PDFXref()
+        xref.subsections.append(xref_subsection)
+
+        output += xref.encode()
+
+        # Write the Trailer dictionary
+        def any_trailer(_, item):
+            return (
+                type(item) == PDFTrailer or
+                (
+                    type(item) == PDFObject and
+                    type(item.value) == PDFDictionary and
+                    b"Type" in item and item[b"Type"] == b"XRef"
+                )
+            )
+
+        trailers = list(self.tokens.find(any_trailer))
+
+        if linearized:
+            old_trailer = trailers[0][1]
+        else:
+            old_trailer = trailers[-1][1]
+
+        if type(old_trailer) == PDFObject:
+            trailer_dictionary = PDFDictionary({
+                PDFName(b"Info"): old_trailer[b"Info"],
+                PDFName(b"Root"): old_trailer[b"Root"],
+                PDFName(b"Size"): PDFNumber(max_obj_num + 1),
+            })
+        else:
+            trailer_dictionary = PDFDictionary({
+                PDFName(b"Info"): old_trailer.dictionary[b"Info"],
+                PDFName(b"Root"): old_trailer.dictionary[b"Root"],
+                PDFName(b"Size"): PDFNumber(max_obj_num + 1),
+            })
+
+        trailer = PDFTrailer(trailer_dictionary)
+        output += trailer.encode()
+
+        # Write the startxref offset
+        output += b"startxref\n%d\n" % offset
+
+        # Write the end of file
+        output += PDFComment(b"%%EOF").encode()
 
         return output

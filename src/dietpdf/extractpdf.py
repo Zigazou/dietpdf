@@ -21,8 +21,8 @@ import sys
 
 from dietpdf.parser.PDFParser import PDFParser
 from dietpdf.processor.PDFProcessor import PDFProcessor
-from dietpdf.item import PDFReference, PDFObject, PDFDictionary
-from dietpdf.info import content_objects
+from dietpdf.item import PDFObject
+from dietpdf.info import all_source_codes
 from dietpdf import __version__
 
 _logger = logging.getLogger(__name__)
@@ -44,36 +44,15 @@ def extractpdf(input_pdf_name: str, base: str):
     processor.end_parsing()
 
     # Find all content objects
-    content_objects_set = set()
-
-    any_form_xobject = lambda _, item: (
-        type(item) == PDFObject and
-        type(item.value) == PDFDictionary and
-        b"Type" in item and
-        item[b"Type"] == b"XObject" and
-        b"Subtype" in item and
-        item[b"Subtype"] == b"Form"
-    )
-
-    for _, object in processor.tokens.find(any_form_xobject):
-        content_objects_set.add(object.obj_num)
-
-    any_contents = lambda _, item: (
-        type(item) == PDFObject and
-        type(item.value) == PDFDictionary and
-        b"Contents" in item and
-        type(item[b"Contents"]) == PDFReference
-    )
-
-    for _, object in processor.tokens.find(any_contents):
-        content_objects_set.add(object[b"Contents"].obj_num)
+    content_objects_set = all_source_codes(processor.tokens)
 
     # Extract all available streams
     any_object_with_stream = lambda _, item: (
         type(item) == PDFObject and
         item.stream != None        
     )
-    for object_id, object in processor.tokens.find(any_object_with_stream):
+    for _, object in processor.tokens.find(any_object_with_stream):
+        object_id = object.obj_num
         extension = "raw"
         width = None
         height = None
