@@ -8,6 +8,7 @@ from .PDFListClose import PDFListClose
 from .PDFListOpen import PDFListOpen
 from .PDFName import PDFName
 from .PDFNumber import PDFNumber
+from .PDFRaw import PDFRaw
 from .PDFString import PDFString
 from .TokenStack import TokenStack
 from .hexstring_to_string import hexstring_to_string

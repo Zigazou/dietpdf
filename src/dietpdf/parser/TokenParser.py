@@ -8,7 +8,7 @@ __email__ = "zigazou@protonmail.com"
 import re
 from dietpdf.token import (
     PDFComment, PDFNumber, PDFCommand, PDFName, PDFListOpen, PDFListClose,
-    PDFDictOpen, PDFDictClose, PDFHexString, PDFString, TokenStack
+    PDFDictOpen, PDFDictClose, PDFHexString, PDFString, PDFRaw
 )
 
 from dietpdf.processor.TokenProcessor import TokenProcessor
@@ -66,6 +66,14 @@ class TokenParser:
             re.DOTALL
         )
 
+        self.end_of_inline_image = re.compile(
+            b"(\r\n|[%s])(.+?)[%s](?=\n?EI[%s])"
+            % (re.escape(self.pdf_white_space),
+               re.escape(self.pdf_white_space),
+               re.escape(self.pdf_white_space)),
+            re.DOTALL
+        )
+
     def _parse_white_space(self):
         self.offset += 1
 
@@ -83,9 +91,19 @@ class TokenParser:
 
     def _parse_command(self):
         sub = self.end_of_word.search(self.binary_data, self.offset)
-        self.processor.push(PDFCommand(sub.group(1)))
+        word = sub.group(1)
 
-        self.offset = sub.span(0)[1]
+        self.processor.push(PDFCommand(word))
+
+        if word == b"ID":
+            # Inline image detected
+            raw = self.end_of_inline_image.search(
+                self.binary_data, self.offset + len(b"ID")
+            )
+            self.processor.push(PDFRaw(raw.group(2)))
+            self.offset = raw.span(0)[1]
+        else:
+            self.offset = sub.span(0)[1]
 
     def _parse_name(self):
         sub = self.end_of_word.search(self.binary_data, self.offset + 1)
