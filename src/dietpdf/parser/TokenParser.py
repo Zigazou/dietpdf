@@ -17,6 +17,9 @@ from dietpdf.processor.TokenProcessor import TokenProcessor
 class UnexpectedCharacter(Exception):
     pass
 
+class UnexpectedSequence(Exception):
+    pass
+
 
 class TokenParser:
     def __init__(self, processor: TokenProcessor):
@@ -30,7 +33,7 @@ class TokenParser:
         # Characters authorized by the PDF specifications
         self.pdf_white_space = b"\0\t\n\f\r "
         self.pdf_delimiter = b"()<>[]{}/%"
-        self.pdf_name_chars = b"!\"#$&'*+,.0-9:;=?@A-Z\\^_`a-z{|}~-"
+        self.pdf_name_chars = b"!\"#$&'*+,.0-9:;=?@A-Z\\^_`a-z{|}~\x80-\xff-"
 
         self.start_comment = b"%"
         self.start_number = b"0123456789-+."
@@ -165,32 +168,39 @@ class TokenParser:
         self.binary_data = binary_data
 
         while self.offset < len(self.binary_data):
-            current = self.binary_data[self.offset:self.offset+1]
+            try:
+                current = self.binary_data[self.offset:self.offset+1]
 
-            if current in self.pdf_white_space:
-                self._parse_white_space()
-            elif current in self.start_comment:
-                self._parse_comment()
-            elif current in self.start_number:
-                self._parse_number()
-            elif current in self.start_command:
-                self._parse_command()
-            elif current in self.start_name:
-                self._parse_name()
-            elif current == b"[":
-                self._parse_list_open()
-            elif current == b"]":
-                self._parse_list_close()
-            elif self.binary_data[self.offset:self.offset + 2] == b"<<":
-                self._parse_dict_open()
-            elif self.binary_data[self.offset:self.offset + 2] == b">>":
-                self._parse_dict_close()
-            elif current == b"<":
-                self._parse_hex_string()
-            elif current == b"(":
-                self._parse_string()
-            else:
-                raise UnexpectedCharacter(
-                    "Unexpected character 0x%02x at offset %d" %
-                    (current[0], self.offset)
+                if current in self.pdf_white_space:
+                    self._parse_white_space()
+                elif current in self.start_comment:
+                    self._parse_comment()
+                elif current in self.start_number:
+                    self._parse_number()
+                elif current in self.start_command:
+                    self._parse_command()
+                elif current in self.start_name:
+                    self._parse_name()
+                elif current == b"[":
+                    self._parse_list_open()
+                elif current == b"]":
+                    self._parse_list_close()
+                elif self.binary_data[self.offset:self.offset + 2] == b"<<":
+                    self._parse_dict_open()
+                elif self.binary_data[self.offset:self.offset + 2] == b">>":
+                    self._parse_dict_close()
+                elif current == b"<":
+                    self._parse_hex_string()
+                elif current == b"(":
+                    self._parse_string()
+                else:
+                    raise UnexpectedCharacter(
+                        "Unexpected character 0x%02x at offset %d" %
+                        (current[0], self.offset)
+                    )
+            except UnexpectedCharacter:
+                raise
+            except AssertionError:
+                raise UnexpectedSequence(
+                    "Unexpected sequence at offset %d" % self.offset
                 )
