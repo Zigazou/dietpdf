@@ -190,7 +190,7 @@ class PDFObject(PDFItem):
                         "Unable to decompress object %d stream" % self.obj_num
                     )
 
-                if parms:
+                if parms and b"Predictor" in parms:
                     columns = parms[b"Columns"].value
 
                     if b"Colors" in parms:

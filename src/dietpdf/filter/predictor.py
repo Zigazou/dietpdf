@@ -162,8 +162,8 @@ def predictor_png_decode(stream: bytes, columns: int, colors: int) -> bytes:
     # into account the starting byte)
     if len(stream) % (columns * colors + 1) != 0:
         raise ValueError(
-            "length of stream to decode is not a multiple of %d" %
-            (columns * colors + 1)
+            "length of stream (%d) to decode is not a multiple of %d" %
+            (len(stream), columns * colors + 1)
         )
 
     output = b""
