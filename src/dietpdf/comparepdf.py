@@ -82,8 +82,6 @@ def pdfcompare(first_pdf: str, second_pdf: str):
             object.optimize_stream()
 
     # Write PDF.
-    _logger.info("Updating cross-reference table")
-    processor.update_xref(pdf_file_content)
     _logger.info("Writing optimized PDF in %s" % output_pdf_name)
     open(output_pdf_name, "wb").write(processor.encode())
 
