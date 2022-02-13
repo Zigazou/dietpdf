@@ -9,7 +9,8 @@ from zlib import compress, decompress
 from logging import getLogger
 
 from dietpdf.filter import (
-    zopfli_deflate, rle_encode, predictor_png_decode, jpegtran_optimize
+    zopfli_deflate, rle_encode, predictor_png_decode, jpegtran_optimize,
+    lzw_decode
 )
 
 from dietpdf.token import PDFToken, PDFName, PDFNumber
@@ -66,7 +67,7 @@ class PDFObject(PDFItem):
         if isinstance(other, PDFObject):
             return (
                 self.obj_num == other.obj_num and
-                self.gen_num == self.gen_num and
+                self.gen_num == other.gen_num and
                 self.value == other.value and
                 self.stream == other.stream
             )
@@ -187,17 +188,28 @@ class PDFObject(PDFItem):
                     output = decompress(output)
                 except:
                     raise Exception(
-                        "Unable to decompress object %d stream" % self.obj_num
+                        "Unable to decompress (ZLIB) object %d stream" %
+                        self.obj_num
                     )
+            """
+            elif filter == b"LZWDecode":
+                try:
+                    output = lzw_decode(output)
+                except:
+                    raise Exception(
+                        "Unable to decompress (LZW) object %d stream" %
+                        self.obj_num
+                    )
+                    """
 
-                if parms and b"Predictor" in parms:
-                    columns = parms[b"Columns"].value
+            if parms and b"Predictor" in parms:
+                columns = parms[b"Columns"].value
 
-                    if b"Colors" in parms:
-                        colors = parms[b"Colors"].value
-                    else:
-                        colors = 1
-                    output = predictor_png_decode(output, columns, colors)
+                if b"Colors" in parms:
+                    colors = parms[b"Colors"].value
+                else:
+                    colors = 1
+                output = predictor_png_decode(output, columns, colors)
 
         return output
 
@@ -225,6 +237,7 @@ class PDFObject(PDFItem):
 
         key_dct_decode = PDFName(b"DCTDecode")
         key_flate_decode = PDFName(b"FlateDecode")
+        key_lzw_decode = PDFName(b"LZWDecode")
         key_rle_decode = PDFName(b"RunLengthDecode")
 
         # Retrieve filter(s)
@@ -249,6 +262,17 @@ class PDFObject(PDFItem):
         columns = None
         while index < len(filters.items):
             if filters.items[index] == key_flate_decode:
+                filters.items.pop(index)
+                parms = decode_parms.items.pop(index)
+                if isinstance(parms, PDFDictionary):
+                    key_colors = PDFName(b"Colors")
+                    if key_colors in parms:
+                        colors = parms[key_colors]
+
+                    key_columns = PDFName(b"Columns")
+                    if key_columns in parms:
+                        columns = parms[key_columns]
+            elif filters.items[index] == key_lzw_decode:
                 filters.items.pop(index)
                 parms = decode_parms.items.pop(index)
                 if isinstance(parms, PDFDictionary):

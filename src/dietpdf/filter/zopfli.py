@@ -17,6 +17,9 @@ def zopfli_deflate(content: bytes) -> bytes:
     This function produces a zlib compatible format. The resulting byte string
     is decompressible using standard zlib functions.
     """
+
+    assert type(content) == bytes
+
     if which("zopfli") == None:
         return None
 

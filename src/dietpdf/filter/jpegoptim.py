@@ -12,6 +12,9 @@ from shutil import which
 def jpegtran_optimize(content: bytes) -> bytes:
     """Optimize a JPEG using Jpegtran.
     """
+
+    assert type(content) == bytes
+
     if which("jpegtran") == None:
         return None
 
