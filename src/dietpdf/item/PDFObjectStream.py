@@ -26,10 +26,10 @@ _logger = getLogger("PDFObjectStream")
 class PDFObjectStream(PDFItem):
     """A PDF object"""
 
-    def __init__(self, obj_num: int, gen_num: int, objects: dict):
+    def __init__(self, obj_num: int, gen_num: int, objects: list):
         assert type(obj_num) == int
         assert type(gen_num) == int
-        assert type(objects) == dict
+        assert type(objects) == list
 
         self.obj_num = obj_num
         self.gen_num = gen_num
@@ -39,7 +39,7 @@ class PDFObjectStream(PDFItem):
     def __bool__(self):
         """A PDFObjectStream is True if it has objects False otherwise.
         """
-        return self.objects
+        return bool(self.objects)
 
     def __eq__(self, other):
         """Equality operator for PDFObject.
@@ -75,7 +75,7 @@ class PDFObjectStream(PDFItem):
         """
         assert type(obj_num) == int
 
-        return self.value.__contains__(obj_num)
+        return self.objects.__contains__(obj_num)
 
     def __getitem__(self, key: int):
         """A PDFObject implements the __getitem__ method when its value is a
@@ -89,9 +89,9 @@ class PDFObjectStream(PDFItem):
         Using this method on PDFObject having other values than PDFDictionary
         will lead to incorrect results or exceptions.
         """
-        assert type(key) ==int
+        assert type(key) == int
 
-        return self.value.__getitem__(key)
+        return self.objects.__getitem__(key)
 
     def pretty(self) -> str:
         return self._pretty(
@@ -104,33 +104,37 @@ class PDFObjectStream(PDFItem):
 
         # Encode each embedded object (only their value).
         encoded_objects = {
-            obj_num: self.objects[obj_num].value.encode()
-            for obj_num in self.objects
+            object.obj_num: object.value.encode()
+            for object in self.objects
+            if not object.has_stream()
         }
 
         # Create the stream of the object values.
-        objects_stream = b" ".join(
-            [encoded_objects[obj_num] for obj_num in encoded_objects]
+        objects_stream = b"".join(
+            [encoded_objects[object.obj_num] for object in self.objects]
         )
 
         # Calculate the offset of each object inside the stream.
         offset = 0
-        for obj_num in encoded_objects:
-            object_offsets[obj_num] = offset
-            offset += len(encoded_objects[obj_num]) + 1
+        for object in self.objects:
+            object_offsets[object.obj_num] = offset
+            offset += len(encoded_objects[object.obj_num])
 
         # Create the stream of the offsets.
         offsets_stream = b" ".join([
-            b"%d %d" % (obj_num, object_offsets[obj_num])
-            for obj_num in object_offsets
+            b"%d %d" % (object.obj_num, object_offsets[object.obj_num])
+            for object in self.objects
         ])
 
         first_offset = len(offsets_stream) + 1
+        deflate_stream = zopfli_deflate(
+            b"%s %s" % (offsets_stream, objects_stream)
+        )
 
         return (
-            b"%d %d obj<</Type/ObjStm/N %d/First %d>>"
-            b"stream\n%s %sendstream\nendobj\n"
+            b"%d %d obj<</Type/ObjStm/N %d/First %d/Filter/FlateDecode/Length %d>>"
+            b"stream\n%s\nendstream\nendobj\n"
         ) % (
             self.obj_num, self.gen_num, len(self.objects), first_offset,
-            offsets_stream, objects_stream
+            len(deflate_stream), deflate_stream
         )

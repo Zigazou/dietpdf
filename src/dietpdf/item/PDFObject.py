@@ -124,13 +124,20 @@ class PDFObject(PDFItem):
         return bool(self.stream)
 
     def pretty(self) -> str:
+        if type(self.value) == PDFDictionary and b"Type" in self.value:
+            obj_type = self.value[b"Type"].encode().decode('ascii')
+        else:
+            obj_type = ""
+
         if self.stream:
             return self._pretty(
-                "Object(%d, %d) + stream(%d)" %
-                (self.obj_num, self.gen_num, len(self.stream))
+                "Object(%d, %d%s) + stream(%d)" %
+                (self.obj_num, self.gen_num, obj_type, len(self.stream))
             )
         else:
-            return self._pretty("Object(%d, %d)" % (self.obj_num, self.gen_num))
+            return self._pretty("Object(%d, %d%s)" %
+                (self.obj_num, self.gen_num, obj_type)
+            )
 
     def encode(self) -> bytes:
         if self.value.__class__.__name__ in NO_SPACE:

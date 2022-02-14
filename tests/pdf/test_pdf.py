@@ -1,3 +1,10 @@
+__author__ = "Frédéric BISSON"
+__copyright__ = "Copyright 2022, Frédéric BISSON"
+__credits__ = ["Frédéric BISSON"]
+__license__ = "mit"
+__maintainer__ = "Frédéric BISSON"
+__email__ = "zigazou@protonmail.com"
+
 import pytest
 
 from dietpdf.token import PDFName, PDFString, PDFNumber, PDFComment
@@ -6,13 +13,6 @@ from dietpdf.item import (
 )
 
 from dietpdf.pdf.PDF import PDF
-
-__author__ = "Frédéric BISSON"
-__copyright__ = "Copyright 2022, Frédéric BISSON"
-__credits__ = ["Frédéric BISSON"]
-__license__ = "mit"
-__maintainer__ = "Frédéric BISSON"
-__email__ = "zigazou@protonmail.com"
 
 
 def create_objects() -> list:

@@ -38,36 +38,43 @@ def rle_encode(content: bytes) -> bytes:
 
     assert type(content) == bytes
 
-    output = b""
-    offset = 0
-    while offset < len(content):
-        current = content[offset]
+    output = bytearray(len(content) * 2)
+    output_offset = 0
+    input_offset = 0
+    while input_offset < len(content):
+        current = content[input_offset]
 
         # Read as many following bytes identical to the current byte.
         count = 1
-        offset += 1
-        while offset < len(content) and content[offset] == current and count < 127:
+        input_offset += 1
+        while input_offset < len(content) and content[input_offset] == current and count < 127:
             count += 1
-            offset += 1
+            input_offset += 1
 
         if count == 1:
             # The current byte does not repeat.
-            if offset == len(content):
+            if input_offset == len(content):
                 # The current byte is the last byte.
-                output += b"\000%c" % current
+                output[output_offset:output_offset + 2] = b"\000%c" % current
+                output_offset += 2
             else:
                 # Read as many different bytes
-                while offset < len(content) and content[offset] != current and count < 128:
-                    current = content[offset]
+                while input_offset < len(content) and content[input_offset] != current and count < 128:
+                    current = content[input_offset]
                     count += 1
-                    offset += 1
+                    input_offset += 1
 
-                output += b"%c%s" % (count - 1, content[offset - count:offset])
+                output[output_offset:output_offset + count] = (
+                    b"%c%s" % (count - 1, content[input_offset - count:input_offset])
+                )
+                output_offset += count + 1
+
         else:
             # Encode the repetition of the current byte.
-            output += b"%c%c" % (257 - count, current)
+            output[output_offset:output_offset + 2] = b"%c%c" % (257 - count, current)
+            output_offset += 2
 
-    return output
+    return bytes(output[:output_offset])
 
 
 def rle_decode(content: bytes) -> bytes:
@@ -82,20 +89,20 @@ def rle_decode(content: bytes) -> bytes:
 
     assert type(content) == bytes
 
-    offset = 0
+    input_offset = 0
     output = b""
-    while offset < len(content):
-        token = content[offset]
+    while input_offset < len(content):
+        token = content[input_offset]
 
         if token < 128:
             length = token + 1
-            output += content[offset + 1:offset + length + 1]
-            offset += length
+            output += content[input_offset + 1:input_offset + length + 1]
+            input_offset += length
         elif token > 128:
             length = 257 - token
-            output += content[offset + 1:offset + 2] * length
-            offset += 1
+            output += content[input_offset + 1:input_offset + 2] * length
+            input_offset += 1
 
-        offset += 1
+        input_offset += 1
 
     return output

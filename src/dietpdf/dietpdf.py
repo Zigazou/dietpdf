@@ -23,7 +23,7 @@ import re
 from dietpdf.parser.PDFParser import PDFParser
 from dietpdf.processor.PDFProcessor import PDFProcessor
 from dietpdf.item import PDFObject, PDFDictionary
-from dietpdf.info import all_source_codes, convert_objstm
+from dietpdf.info import all_source_codes, convert_objstm, create_objstm
 from dietpdf import __version__
 
 _logger = logging.getLogger("dietpdf")
@@ -45,8 +45,11 @@ def diet(input_pdf_name: str):
     parser = PDFParser(processor)
     parser.parse(pdf_file_content)
     processor.end_parsing()
+
+    # Extracts objects from object streams.
     convert_objstm(processor.tokens)
 
+    # Identifies every object whose stream is textual.
     source_codes = all_source_codes(processor.tokens)
 
     any_object = lambda _, item: type(item) == PDFObject
@@ -61,6 +64,10 @@ def diet(input_pdf_name: str):
     for _, object in processor.tokens.find(any_object_with_stream):
         _logger.info("Optimizing object %d stream" % object.obj_num)
         object.optimize_stream()
+
+    # Group objects without stream into an object stream
+    _logger.info("Grouping objects without stream into an object stream")
+    create_objstm(processor.tokens)
 
     # Write PDF.
     _logger.info("Writing optimized PDF in %s" % output_pdf_name)

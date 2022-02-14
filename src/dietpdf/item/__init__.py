@@ -2,12 +2,14 @@ from .PDFItem import PDFItem
 from .PDFDictionary import PDFDictionary
 from .PDFList import PDFList
 from .PDFObject import PDFObject
+from .PDFObjectStream import PDFObjectStream
 from .PDFObjectID import PDFObjectID
 from .PDFNull import PDFNull
 from .PDFReference import PDFReference
 from .PDFObjectEnd import PDFObjectEnd
 from .PDFStream import PDFStream
 from .PDFXref import PDFXref
+from .PDFXrefStream import PDFXrefStream
 from .PDFXrefSubSection import PDFXrefSubSection
 from .PDFStartXref import PDFStartXref
 from .PDFTrailer import PDFTrailer

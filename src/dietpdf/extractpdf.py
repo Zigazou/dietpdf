@@ -77,6 +77,8 @@ def extractpdf(input_pdf_name: str, base: str):
 
         print(output_file_name)
 
+    processor.pretty_print()
+
 
 def parse_args(args):
     """Parse command line parameters
