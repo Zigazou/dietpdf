@@ -15,6 +15,48 @@ PREDICTOR_PNG_PAETH = 14
 PREDICTOR_PNG_OPTIMUM = 15
 
 
+def predictor_tiff_decode(stream: bytes, columns: int, colors: int) -> bytes:
+    """Decode a stream encoded with the TIFF predictor.
+
+    :param stream: The byte sequence to decode
+    :type stream: bytes
+    :param columns: Number of columns
+    :type columns: int
+    :param colors: Number of bytes for one pixel (ie. 3 for 24 bit RGB)
+    :type colors: int
+    :return: the byte sequence decoded
+    :rtype: bytes
+    :raise ValueError: If the byte sequence length is not a multiple of columns
+        number (with colors taken into account)
+    """
+
+    assert type(stream) == bytes
+    assert type(columns) == int
+    assert type(colors) == int
+
+    # The stream length must be a multiple columns * colors.
+    if len(stream) % (columns * colors) != 0:
+        raise ValueError(
+            "length of stream (%d) to decode is not a multiple of %d" %
+            (len(stream), columns * colors)
+        )
+
+    output = b""
+    for offset in range(0, len(stream), columns * colors):
+        current_row = stream[offset:offset+columns * colors]
+
+        row_decoded = [0] * colors
+        for column in range(columns * colors):
+            row_decoded.append(
+                (current_row[column]+row_decoded[column]) % 256
+            )
+        row_decoded = bytes(row_decoded[colors:])
+
+        output += row_decoded
+
+    return output
+
+
 def paeth_predictor(left: int, above: int, upper_left: int) -> int:
     """Selected a value according to the Paeth predictor algorithm.
 

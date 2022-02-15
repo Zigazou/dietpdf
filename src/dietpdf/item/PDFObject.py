@@ -10,7 +10,7 @@ from logging import getLogger
 
 from dietpdf.filter import (
     zopfli_deflate, rle_encode, predictor_png_decode, jpegtran_optimize,
-    lzw_decode
+    predictor_tiff_decode
 )
 
 from dietpdf.token import PDFToken, PDFName, PDFNumber
@@ -216,7 +216,12 @@ class PDFObject(PDFItem):
                     colors = parms[b"Colors"].value
                 else:
                     colors = 1
-                output = predictor_png_decode(output, columns, colors)
+
+                predictor = int(parms[b"Predictor"])
+                if predictor == 2:
+                    output = predictor_tiff_decode(output, columns, colors)
+                elif predictor >= 10 and predictor <= 15:
+                    output = predictor_png_decode(output, columns, colors)
 
         return output
 
@@ -315,27 +320,6 @@ class PDFObject(PDFItem):
             "After  RLE+Zopfli on object %d, size = %d" %
             (self.obj_num, len(zopfli_rle_stream))
         )
-        """
-        _logger.debug(
-            "Before RLE+Zlib on object %d, size = %d" %
-            (self.obj_num, len(stream))
-        )
-        zlib_rle_stream = compress(rle_stream, 9)
-        _logger.debug(
-            "After  RLE+Zlib on object %d, size = %d" %
-            (self.obj_num, len(zlib_rle_stream))
-        )
-
-        _logger.debug(
-            "Before Zlib on object %d, size = %d" %
-            (self.obj_num, len(stream))
-        )
-        zlib_stream = compress(stream, 9)
-        _logger.debug(
-            "After  Zlib on object %d, size = %d" %
-            (self.obj_num, len(zlib_stream))
-        )
-        """
         _logger.debug(
             "Before Zopfli on object %d, size = %d" %
             (self.obj_num, len(stream))
