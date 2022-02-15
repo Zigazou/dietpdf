@@ -5,10 +5,14 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
+from logging import getLogger
+
 from dietpdf.parser.PDFParser import PDFParser
 from dietpdf.processor.PDFProcessor import PDFProcessor
 from dietpdf.item import PDFObject, PDFDictionary, PDFObjectStream
 from dietpdf.pdf import PDF
+
+_logger = getLogger("decode_objstm")
 
 
 def decode_objstm(stream: bytes, first: int) -> list:
@@ -72,6 +76,7 @@ def convert_objstm(pdf: PDF):
     to_remove = []
     for index, item in pdf.find(any_objstm):
         to_remove.append(index)
+        _logger.debug("Decoding object stream %d" % item.obj_num)
         objects = decode_objstm(item.decode_stream(), int(item[b"First"]))
         for object in objects:
             pdf.push(object)

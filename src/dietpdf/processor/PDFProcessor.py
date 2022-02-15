@@ -25,6 +25,10 @@ from .TokenProcessor import TokenProcessor
 _logger = getLogger("PDFProcessor")
 
 
+class EncryptionNotImplemented(Exception):
+    pass
+
+
 class PDFProcessor(TokenProcessor):
     """A PDF processor
 
@@ -78,6 +82,10 @@ class PDFProcessor(TokenProcessor):
         else:
             value = stream
             stream = None
+
+        if type(value) == PDFDictionary:
+            if b"Encrypt" in value:
+                raise EncryptionNotImplemented()
 
         object_id = self.tokens.pop()
         object = PDFObject(object_id.obj_num, object_id.gen_num, value, stream)

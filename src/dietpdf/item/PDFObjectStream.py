@@ -8,11 +8,9 @@ __email__ = "zigazou@protonmail.com"
 from zlib import compress, decompress
 from logging import getLogger
 
-from sympy import O
-
 from dietpdf.filter import zopfli_deflate
 
-from dietpdf.token import PDFToken, PDFName, PDFNumber
+from dietpdf.token import PDFToken
 
 from .content_stream import optimize_content_stream
 from .PDFItem import PDFItem
@@ -110,7 +108,7 @@ class PDFObjectStream(PDFItem):
         }
 
         # Create the stream of the object values.
-        objects_stream = b"".join(
+        objects_stream = b" ".join(
             [encoded_objects[object.obj_num] for object in self.objects]
         )
 
@@ -118,7 +116,7 @@ class PDFObjectStream(PDFItem):
         offset = 0
         for object in self.objects:
             object_offsets[object.obj_num] = offset
-            offset += len(encoded_objects[object.obj_num])
+            offset += len(encoded_objects[object.obj_num]) + 1
 
         # Create the stream of the offsets.
         offsets_stream = b" ".join([

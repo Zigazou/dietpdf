@@ -21,7 +21,9 @@ import sys
 import re
 
 from dietpdf.parser.PDFParser import PDFParser
-from dietpdf.processor.PDFProcessor import PDFProcessor
+from dietpdf.processor.PDFProcessor import (
+    PDFProcessor, EncryptionNotImplemented
+)
 from dietpdf.item import PDFObject, PDFDictionary
 from dietpdf.info import all_source_codes, convert_objstm, create_objstm
 from dietpdf import __version__
@@ -43,8 +45,18 @@ def diet(input_pdf_name: str):
     pdf_file_content = open(input_pdf_name, "rb").read()
     processor = PDFProcessor()
     parser = PDFParser(processor)
-    parser.parse(pdf_file_content)
-    processor.end_parsing()
+
+    try:
+        parser.parse(pdf_file_content)
+        processor.end_parsing()
+    except EncryptionNotImplemented:
+        _logger.info("Encrypted PDFs are not supported.")
+        print("Encrypted PDFs are not supported.")
+        print(
+            "You may use tools like PDFTK to decrypt the PDF before using "
+            "DietPDF."
+        )
+        sys.exit(2)
 
     # Extracts objects from object streams.
     convert_objstm(processor.tokens)

@@ -1,5 +1,6 @@
 from .predictor import (
-    predictor_png_decode, predictor_png_encode, predictor_tiff_decode
+    predictor_png_decode, predictor_png_encode, predictor_tiff_decode,
+    predictor_png_best_encode
 )
 from .zopfli import zopfli_deflate
 from .rle import rle_decode, rle_encode
