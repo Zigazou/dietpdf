@@ -150,7 +150,7 @@ class PDFObject(PDFItem):
             )
 
         if self.stream != None:
-            output += b"stream\n%sendstream\nendobj\n" % self.stream.encode()
+            output += b"stream\n%s\nendstream\nendobj\n" % self.stream.encode()
         elif self.value.__class__.__name__ in NO_SPACE:
             output += b"endobj\n"
         else:
@@ -315,7 +315,7 @@ class PDFObject(PDFItem):
             "After  RLE+Zopfli on object %d, size = %d" %
             (self.obj_num, len(zopfli_rle_stream))
         )
-
+        """
         _logger.debug(
             "Before RLE+Zlib on object %d, size = %d" %
             (self.obj_num, len(stream))
@@ -335,7 +335,7 @@ class PDFObject(PDFItem):
             "After  Zlib on object %d, size = %d" %
             (self.obj_num, len(zlib_stream))
         )
-
+        """
         _logger.debug(
             "Before Zopfli on object %d, size = %d" %
             (self.obj_num, len(stream))

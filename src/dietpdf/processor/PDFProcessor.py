@@ -81,6 +81,24 @@ class PDFProcessor(TokenProcessor):
 
         object_id = self.tokens.pop()
         object = PDFObject(object_id.obj_num, object_id.gen_num, value, stream)
+
+        # Remove objects in the stack with the same number.
+        def any_object_with_same_number(_, item):
+            return (
+                type(item) == PDFObject and
+                item.obj_num == object.obj_num
+            )
+
+        to_remove = [
+            index
+            for index, _ in self.tokens.find(any_object_with_same_number)
+        ]
+
+        to_remove.sort(reverse=True)
+
+        for index in to_remove:
+            self.tokens.pop(index)
+
         self.tokens.push(object)
 
     def _convert_startxref(self):
