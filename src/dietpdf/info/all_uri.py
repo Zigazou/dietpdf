@@ -5,8 +5,9 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
-from dietpdf.pdf import PDF
-from dietpdf.item import PDFObject, PDFDictionary
+from ..pdf.PDF import PDF
+from ..item.PDFObject import PDFObject
+from ..item.PDFDictionary import PDFDictionary
 
 
 def all_uri(pdf: PDF) -> list:

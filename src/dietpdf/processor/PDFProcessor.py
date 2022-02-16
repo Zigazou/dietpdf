@@ -7,18 +7,29 @@ __email__ = "zigazou@protonmail.com"
 
 from logging import getLogger
 
-from dietpdf.token import (
-    PDFNumber, PDFListOpen, PDFDictOpen, PDFCommand, PDFListClose,
-    PDFDictClose, PDFComment
-)
+from ..token.PDFNumber import PDFNumber
+from ..token.PDFListOpen import PDFListOpen
+from ..token.PDFDictOpen import PDFDictOpen
+from ..token.PDFCommand import PDFCommand
+from ..token.PDFListClose import PDFListClose
+from ..token.PDFDictClose import PDFDictClose
+from ..token.PDFComment import PDFComment
 
-from dietpdf.item import (
-    PDFReference, PDFObjectID, PDFList, PDFDictionary,
-    PDFObject, PDFTrailer, PDFStartXref, PDFXref, PDFStream, PDFXrefStream,
-    PDFObjectStream, PDFXrefSubSection
-)
+from ..item.PDFReference import PDFReference
+from ..item.PDFObjectID import PDFObjectID
+from ..item.PDFList import PDFList
+from ..item.PDFDictionary import PDFDictionary
+from ..item.PDFObject import PDFObject
+from ..item.PDFTrailer import PDFTrailer
+from ..item.PDFStartXref import PDFStartXref
+from ..item.PDFXref import PDFXref
+from ..item.PDFStream import PDFStream
+from ..item.PDFXrefStream import PDFXrefStream
+from ..item.PDFObjectStream import PDFObjectStream
+from ..item.PDFXrefSubSection import PDFXrefSubSection
 
-from dietpdf.pdf import PDF
+from ..pdf.PDF import PDF
+
 from .TokenProcessor import TokenProcessor
 
 
@@ -26,6 +37,10 @@ _logger = getLogger("PDFProcessor")
 
 
 class EncryptionNotImplemented(Exception):
+    pass
+
+
+class SignatureNotSupported(Exception):
     pass
 
 
@@ -84,8 +99,13 @@ class PDFProcessor(TokenProcessor):
             stream = None
 
         if type(value) == PDFDictionary:
+            # Look for encryption use in the PDF
             if b"Encrypt" in value:
                 raise EncryptionNotImplemented()
+
+            # Look for signature use in the PDF
+            if b"Type" in value and value[b"Type"] == b"Sig":
+                raise SignatureNotSupported()
 
         object_id = self.tokens.pop()
         object = PDFObject(object_id.obj_num, object_id.gen_num, value, stream)

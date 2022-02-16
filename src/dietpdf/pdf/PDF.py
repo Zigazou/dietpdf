@@ -5,10 +5,12 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
-from dietpdf.token import TokenStack
-from dietpdf.item import (
-    PDFReference, PDFList, PDFDictionary, PDFObject, PDFItem
-)
+from ..token.TokenStack import TokenStack
+from ..item.PDFReference import PDFReference
+from ..item.PDFList import PDFList
+from ..item.PDFDictionary import PDFDictionary
+from ..item.PDFObject import PDFObject
+from ..item.PDFItem import PDFItem
 
 
 class PDF(TokenStack):

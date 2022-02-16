@@ -7,11 +7,9 @@ __email__ = "zigazou@protonmail.com"
 
 from math import log, ceil
 
-from dietpdf.filter.zopfli import zopfli_deflate
-from dietpdf.filter.predictor import (
-    predictor_png_encode, PREDICTOR_PNG_UP, ROW_UP
-)
-from dietpdf.token import PDFToken
+from ..filter.zopfli import zopfli_deflate
+from ..filter.predictor import predictor_png_encode, PREDICTOR_PNG_UP, ROW_UP
+from ..token.PDFToken import PDFToken
 
 from .PDFItem import PDFItem
 

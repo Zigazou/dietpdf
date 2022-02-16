@@ -7,8 +7,9 @@ __email__ = "zigazou@protonmail.com"
 
 import re
 
-from dietpdf.token import PDFCommand
-from dietpdf.item import PDFStream, PDFNull
+from ..token.PDFCommand import PDFCommand
+from ..item.PDFStream import PDFStream
+from ..item.PDFNull import PDFNull
 
 from .TokenParser import TokenParser
 

@@ -5,7 +5,8 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
-from dietpdf.token import PDFToken, PDFName
+from ..token.PDFToken import PDFToken
+from ..token.PDFName import PDFName
 
 from .PDFItem import PDFItem
 

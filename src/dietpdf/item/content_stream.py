@@ -5,10 +5,10 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
-from dietpdf.parser.TokenParser import TokenParser
-from dietpdf.token import PDFHexString
-from dietpdf.token.hexstring_to_string import hexstring_to_string
-from dietpdf.processor.TokenProcessor import TokenProcessor
+from ..parser.TokenParser import TokenParser
+from ..token.PDFHexString import PDFHexString
+from ..token.hexstring_to_string import hexstring_to_string
+from ..processor.TokenProcessor import TokenProcessor
 
 def optimize_content_stream(stream: bytes) -> bytes:
     """Optimize a content stream.

@@ -20,13 +20,14 @@ import logging
 import sys
 import re
 
-from dietpdf.parser.PDFParser import PDFParser
-from dietpdf.processor.PDFProcessor import (
-    PDFProcessor, EncryptionNotImplemented
+from .parser.PDFParser import PDFParser
+from .processor.PDFProcessor import (
+    PDFProcessor, EncryptionNotImplemented, SignatureNotSupported
 )
-from dietpdf.item import PDFObject, PDFDictionary
-from dietpdf.info import all_source_codes, convert_objstm, create_objstm
-from dietpdf import __version__
+from .item.PDFObject import PDFObject
+from .info.all_source_codes import all_source_codes
+from .info.decode_objstm import convert_objstm, create_objstm
+from . import __version__
 
 _logger = logging.getLogger("dietpdf")
 
@@ -57,6 +58,14 @@ def diet(input_pdf_name: str):
             "DietPDF."
         )
         sys.exit(2)
+    except SignatureNotSupported:
+        _logger.info("PDFs with signature are not supported.")
+        print("PDFs with signature are not supported.")
+        print(
+            "Though DietPDF could compress PDF files with signature and still "
+            "produce a readable PDF, signature would then be invalid."
+        )
+        sys.exit(3)
 
     # Extracts objects from object streams.
     convert_objstm(processor.tokens)
@@ -64,12 +73,13 @@ def diet(input_pdf_name: str):
     # Identifies every object whose stream is textual.
     source_codes = all_source_codes(processor.tokens)
 
-    any_object = lambda _, item: type(item) == PDFObject
+    def any_object(_, item): return type(item) == PDFObject
     for _, object in processor.tokens.find(any_object):
         object.source_code = object.obj_num in source_codes
 
     # Optimize streams.
     _logger.info("Start optimizing objects and streams")
+
     def any_object_with_stream(_, item):
         return type(item) == PDFObject and item.has_stream()
 

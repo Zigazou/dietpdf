@@ -8,7 +8,7 @@ __email__ = "zigazou@protonmail.com"
 """Base class for any PDF item that might be encountered in a PDF file.
 """
 
-from dietpdf.token.PDFToken import PDFToken
+from ..token.PDFToken import PDFToken
 
 
 class PDFItem(PDFToken):

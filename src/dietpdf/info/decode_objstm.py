@@ -7,10 +7,12 @@ __email__ = "zigazou@protonmail.com"
 
 from logging import getLogger
 
-from dietpdf.parser.PDFParser import PDFParser
-from dietpdf.processor.PDFProcessor import PDFProcessor
-from dietpdf.item import PDFObject, PDFDictionary, PDFObjectStream
-from dietpdf.pdf import PDF
+from ..parser.PDFParser import PDFParser
+from ..processor.PDFProcessor import PDFProcessor
+from ..item.PDFObject import PDFObject
+from ..item.PDFDictionary import PDFDictionary
+from ..item.PDFObjectStream import PDFObjectStream
+from ..pdf.PDF import PDF
 
 _logger = getLogger("decode_objstm")
 

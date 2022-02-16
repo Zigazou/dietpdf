@@ -7,7 +7,8 @@ __email__ = "zigazou@protonmail.com"
 
 from logging import getLogger
 
-from dietpdf.token import TokenStack, PDFToken
+from ..token.TokenStack import TokenStack
+from ..token.PDFToken import PDFToken
 
 _logger = getLogger("TokenProcessor")
 

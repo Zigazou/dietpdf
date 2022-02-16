@@ -8,9 +8,9 @@ __email__ = "zigazou@protonmail.com"
 from zlib import compress, decompress
 from logging import getLogger
 
-from dietpdf.filter import zopfli_deflate
+from ..filter.zopfli import zopfli_deflate
 
-from dietpdf.token import PDFToken
+from ..token.PDFToken import PDFToken
 
 from .content_stream import optimize_content_stream
 from .PDFItem import PDFItem

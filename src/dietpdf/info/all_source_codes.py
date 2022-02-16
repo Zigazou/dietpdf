@@ -5,8 +5,10 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
-from dietpdf.pdf import PDF
-from dietpdf.item import PDFObject, PDFDictionary, PDFReference
+from ..pdf.PDF import PDF
+from ..item.PDFObject import PDFObject
+from ..item.PDFDictionary import PDFDictionary
+from ..item.PDFReference import PDFReference
 
 
 def all_source_codes(pdf: PDF) -> list:

@@ -6,12 +6,20 @@ __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
 import re
-from dietpdf.token import (
-    PDFComment, PDFNumber, PDFCommand, PDFName, PDFListOpen, PDFListClose,
-    PDFDictOpen, PDFDictClose, PDFHexString, PDFString, PDFRaw
-)
 
-from dietpdf.processor.TokenProcessor import TokenProcessor
+from ..token.PDFComment import PDFComment
+from ..token.PDFNumber import PDFNumber
+from ..token.PDFCommand import PDFCommand
+from ..token.PDFName import PDFName
+from ..token.PDFListOpen import PDFListOpen
+from ..token.PDFListClose import PDFListClose
+from ..token.PDFDictOpen import PDFDictOpen
+from ..token.PDFDictClose import PDFDictClose
+from ..token.PDFHexString import PDFHexString
+from ..token.PDFString import PDFString
+from ..token.PDFRaw import PDFRaw
+
+from ..processor.TokenProcessor import TokenProcessor
 
 
 class UnexpectedCharacter(Exception):

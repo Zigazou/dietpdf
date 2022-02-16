@@ -9,14 +9,18 @@ from zlib import compress, decompress
 from base64 import a85decode
 from logging import getLogger
 
-from dietpdf.filter import zopfli_deflate, rle_encode, jpegtran_optimize
-from dietpdf.filter.predictor import (
+from ..filter.zopfli import zopfli_deflate
+from ..filter.rle import rle_encode
+from ..filter.jpegoptim import jpegtran_optimize
+from ..filter.predictor import (
     PREDICTOR_NONE, predictor_png_decode,
     predictor_tiff_decode, predictor_png_best_encode,
     PREDICTOR_PNG_OPTIMUM
 )
 
-from dietpdf.token import PDFToken, PDFName, PDFNumber
+from ..token.PDFToken import PDFToken
+from ..token.PDFName import PDFName
+from ..token.PDFNumber import PDFNumber
 
 from .content_stream import optimize_content_stream
 from .PDFItem import PDFItem

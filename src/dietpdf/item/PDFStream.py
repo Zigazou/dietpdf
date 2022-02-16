@@ -7,7 +7,7 @@ __email__ = "zigazou@protonmail.com"
 
 from zlib import decompress
 
-from dietpdf.token import PDFToken
+from ..token.PDFToken import PDFToken
 
 from .PDFItem import PDFItem
 

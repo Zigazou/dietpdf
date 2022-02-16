@@ -7,8 +7,8 @@ __email__ = "zigazou@protonmail.com"
 
 import logging
 
-from dietpdf.item import PDFDictionary
-from dietpdf.processor import PDFProcessor
+from ..item.PDFDictionary import PDFDictionary
+from ..processor.PDFProcessor import PDFProcessor
 
 _logger = logging.getLogger("content_objects")
 

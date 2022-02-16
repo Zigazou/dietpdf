@@ -5,7 +5,7 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
-from dietpdf.token import PDFToken
+from ..token.PDFToken import PDFToken
 
 from .PDFItem import PDFItem
 
@@ -52,7 +52,7 @@ class PDFList(PDFItem):
 
     def __init__(self, items: list):
         """Creates a PDF list.
-        
+
         If the items parameter is not a list, it is placed in a list that will
         become the list of the PDFList object.
 
