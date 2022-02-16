@@ -19,10 +19,13 @@ import argparse
 import logging
 import sys
 
-from dietpdf.parser.PDFParser import PDFParser
-from dietpdf.processor.PDFProcessor import PDFProcessor
-from dietpdf.item import PDFObject, PDFDictionary
-from dietpdf import __version__
+from .parser.PDFParser import PDFParser
+from .processor.PDFProcessor import PDFProcessor
+from .item.PDFObject import PDFObject
+from .item.PDFList import PDFList
+from .item.PDFDictionary import PDFDictionary
+from .info.decode_objstm import convert_objstm
+from . import __version__
 
 _logger = logging.getLogger(__name__)
 
@@ -40,23 +43,50 @@ def infopdf(input_pdf_name: str):
     parser = PDFParser(processor)
     parser.parse(pdf_file_content)
     processor.end_parsing()
+    convert_objstm(processor.tokens)
 
     pdf = processor.tokens
 
     # Print all hyperlinks.
     def any_link(_, item): return (
         type(item) == PDFObject and type(item.value) == PDFDictionary and
-        "Type" in item.value and item.value["Type"] == b"Annot" and
-        "Subtype" in item.value and item.value["Subtype"] == b"Link"
+        b"Type" in item.value and item.value[b"Type"] == b"Annot" and
+        b"Subtype" in item.value and item.value[b"Subtype"] == b"Link"
     )
 
     urls = set()
     for _, object in pdf.find(any_link):
-        urls.add(pdf.get(object, ["A", "URI"]).to_string())
+        link = pdf.get(object, ["A", "URI"])
+        if link:
+            urls.add(link.to_string())
 
+    print("[HYPERLINK]")
     for url in urls:
         print(url)
 
+    print()
+
+    # Print all filters used.
+    def any_filter(_, item): return (
+        type(item) == PDFObject and
+        type(item.value) == PDFDictionary and b"Filter" in item.value
+    )
+
+    filters = set()
+    for _, object in pdf.find(any_filter):
+        filter = object.value[b"Filter"]
+
+        if type(filter) == PDFList:
+            for item in filter:
+                filters.add(str(item))
+        else:
+            filters.add(str(object.value[b"Filter"]))
+
+    print("[FILTER]")
+    for filter in filters:
+        print(filter)
+
+    print()
 
 def parse_args(args):
     """Parse command line parameters
