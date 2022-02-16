@@ -64,7 +64,7 @@ class TokenParser:
         )
 
         self.end_of_stream = re.compile(
-            b"(\r\n|\n)(.+?)\n?endstream(?=[%s]+endobj)"
+            b"(\r\n|\n)(.+?[\r\n]?)endstream(?=[%s]+endobj)"
             % re.escape(self.pdf_white_space),
             re.DOTALL
         )

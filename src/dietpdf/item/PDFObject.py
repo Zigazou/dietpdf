@@ -6,10 +6,14 @@ __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
 from zlib import compress, decompress
+from base64 import a85decode
 from logging import getLogger
 
-from dietpdf.filter import (
-    zopfli_deflate, rle_encode, predictor_png_decode, jpegtran_optimize
+from dietpdf.filter import zopfli_deflate, rle_encode, jpegtran_optimize
+from dietpdf.filter.predictor import (
+    PREDICTOR_NONE, predictor_png_decode,
+    predictor_tiff_decode, predictor_png_best_encode,
+    PREDICTOR_PNG_OPTIMUM
 )
 
 from dietpdf.token import PDFToken, PDFName, PDFNumber
@@ -66,7 +70,7 @@ class PDFObject(PDFItem):
         if isinstance(other, PDFObject):
             return (
                 self.obj_num == other.obj_num and
-                self.gen_num == self.gen_num and
+                self.gen_num == other.gen_num and
                 self.value == other.value and
                 self.stream == other.stream
             )
@@ -123,13 +127,20 @@ class PDFObject(PDFItem):
         return bool(self.stream)
 
     def pretty(self) -> str:
+        if type(self.value) == PDFDictionary and b"Type" in self.value:
+            obj_type = self.value[b"Type"].encode().decode('ascii')
+        else:
+            obj_type = ""
+
         if self.stream:
             return self._pretty(
-                "Object(%d, %d) + stream(%d)" %
-                (self.obj_num, self.gen_num, len(self.stream))
+                "Object(%d, %d%s) + stream(%d)" %
+                (self.obj_num, self.gen_num, obj_type, len(self.stream))
             )
         else:
-            return self._pretty("Object(%d, %d)" % (self.obj_num, self.gen_num))
+            return self._pretty("Object(%d, %d%s)" %
+                (self.obj_num, self.gen_num, obj_type)
+            )
 
     def encode(self) -> bytes:
         if self.value.__class__.__name__ in NO_SPACE:
@@ -142,7 +153,7 @@ class PDFObject(PDFItem):
             )
 
         if self.stream != None:
-            output += b"stream\n%sendstream\nendobj\n" % self.stream.encode()
+            output += b"stream\n%s\nendstream\nendobj\n" % self.stream.encode()
         elif self.value.__class__.__name__ in NO_SPACE:
             output += b"endobj\n"
         else:
@@ -187,16 +198,41 @@ class PDFObject(PDFItem):
                     output = decompress(output)
                 except:
                     raise Exception(
-                        "Unable to decompress object %d stream" % self.obj_num
+                        "Unable to decompress (ZLIB) object %d stream" %
+                        self.obj_num
+                    )
+            elif filter == b"ASCII85Decode":
+                try:
+                    output = a85decode(output.strip(), adobe=True)
+                except:
+                    raise Exception(
+                        "Unable to decode ASCII85 object %d stream" %
+                        self.obj_num
                     )
 
-                if parms and b"Predictor" in parms:
-                    columns = parms[b"Columns"].value
+            """
+            elif filter == b"LZWDecode":
+                try:
+                    output = lzw_decode(output)
+                except:
+                    raise Exception(
+                        "Unable to decompress (LZW) object %d stream" %
+                        self.obj_num
+                    )
+                    """
 
-                    if b"Colors" in parms:
-                        colors = parms[b"Colors"].value
-                    else:
-                        colors = 1
+            if type(parms) == PDFDictionary and b"Predictor" in parms:
+                columns = parms[b"Columns"].value
+
+                if b"Colors" in parms:
+                    colors = parms[b"Colors"].value
+                else:
+                    colors = 1
+
+                predictor = int(parms[b"Predictor"])
+                if predictor == 2:
+                    output = predictor_tiff_decode(output, columns, colors)
+                elif predictor >= 10 and predictor <= 15:
                     output = predictor_png_decode(output, columns, colors)
 
         return output
@@ -225,7 +261,9 @@ class PDFObject(PDFItem):
 
         key_dct_decode = PDFName(b"DCTDecode")
         key_flate_decode = PDFName(b"FlateDecode")
+        key_lzw_decode = PDFName(b"LZWDecode")
         key_rle_decode = PDFName(b"RunLengthDecode")
+        key_ascii85_decode = PDFName(b"ASCII85Decode")
 
         # Retrieve filter(s)
         filters = self[b"Filter"] if b"Filter" in self else []
@@ -247,6 +285,7 @@ class PDFObject(PDFItem):
         index = 0
         colors = None
         columns = None
+        dctencoded = False
         while index < len(filters.items):
             if filters.items[index] == key_flate_decode:
                 filters.items.pop(index)
@@ -259,105 +298,113 @@ class PDFObject(PDFItem):
                     key_columns = PDFName(b"Columns")
                     if key_columns in parms:
                         columns = parms[key_columns]
+            elif filters.items[index] == key_lzw_decode:
+                filters.items.pop(index)
+                parms = decode_parms.items.pop(index)
+                if isinstance(parms, PDFDictionary):
+                    key_colors = PDFName(b"Colors")
+                    if key_colors in parms:
+                        colors = parms[key_colors]
+
+                    key_columns = PDFName(b"Columns")
+                    if key_columns in parms:
+                        columns = parms[key_columns]
             elif filters.items[index] == key_dct_decode:
+                dctencoded = True
                 stream = jpegtran_optimize(stream)
                 index += 1
+            elif filters.items[index] == key_ascii85_decode:
+                filters.items.pop(index)
+                decode_parms.items.pop(index)
             else:
                 index += 1
 
-        _logger.debug(
-            "Before RLE on object %d, size = %d" %
-            (self.obj_num, len(stream))
-        )
-        rle_stream = rle_encode(stream)
-        _logger.debug(
-            "After  RLE on object %d, size = %d" %
-            (self.obj_num, len(rle_stream))
-        )
+        if not dctencoded:
+            if not columns and b"Width" in self.value:
+                columns = self.value[b"Width"]
 
-        _logger.debug(
-            "Before RLE+Zopfli on object %d, size = %d" %
-            (self.obj_num, len(stream))
-        )
-        zopfli_rle_stream = zopfli_deflate(rle_stream)
-        _logger.debug(
-            "After  RLE+Zopfli on object %d, size = %d" %
-            (self.obj_num, len(zopfli_rle_stream))
-        )
+            if not colors and b"ColorSpace" in self.value:
+                if self.value[b"ColorSpace"] == PDFName(b"DeviceRGB"):
+                    colors = PDFNumber(3)
+                elif self.value[b"ColorSpace"] == PDFName(b"DeviceGray"):
+                    colors = PDFNumber(1)
 
-        _logger.debug(
-            "Before RLE+Zlib on object %d, size = %d" %
-            (self.obj_num, len(stream))
-        )
-        zlib_rle_stream = compress(rle_stream, 9)
-        _logger.debug(
-            "After  RLE+Zlib on object %d, size = %d" %
-            (self.obj_num, len(zlib_rle_stream))
-        )
+        streams = {}
 
-        _logger.debug(
-            "Before Zlib on object %d, size = %d" %
-            (self.obj_num, len(stream))
-        )
-        zlib_stream = compress(stream, 9)
-        _logger.debug(
-            "After  Zlib on object %d, size = %d" %
-            (self.obj_num, len(zlib_stream))
-        )
+        streams["NONE"] = stream
+        streams["RLE"] = rle_encode(stream)
+        _logger.debug("Try RLE")
 
-        _logger.debug(
-            "Before Zopfli on object %d, size = %d" %
-            (self.obj_num, len(stream))
-        )
-        zopfli_stream = zopfli_deflate(stream)
-        _logger.debug(
-            "After  Zopfli on object %d, size = %d" %
-            (self.obj_num, len(zopfli_stream))
-        )
+        if columns:
+            if not colors:
+                colors = PDFNumber(1)
 
-        # Replace only if size reduced
-        if len(zopfli_stream) < len(self.stream.stream) or \
-                len(zopfli_rle_stream) < len(self.stream):
+            try:
+                streams["AUTO"] = predictor_png_best_encode(
+                    stream, int(columns), int(colors)
+                )
+                _logger.debug("Try PNG_AUTO predictor")
+            except ValueError:
+                _logger.debug("Ignore PNG_AUTO predictor")
 
-            _logger.debug(
-                "Compression reduces the object %d stream size" % self.obj_num
+        # Calculates compressed sizes for all predictors.
+        (best_opt, best_size) = ("NONE", 2**32)
+        for opt in streams:
+            size = len(compress(streams[opt], 5))
+            if size < best_size:
+                (best_opt, best_size) = (opt, size)
+
+        # Find best optimization.
+        zopfli_stream = zopfli_deflate(streams[best_opt])
+        _logger.debug("Try Zopfli")
+
+        # Compression has no gain.
+        if len(zopfli_stream) >= len(self.stream):
+            if dctencoded:
+                _logger.info(
+                    "Best strategy for object %d stream = DCTENCODE" %
+                    self.obj_num
+                )
+
+            return
+
+        if dctencoded:
+            _logger.info(
+                "Best strategy for object %d stream = DCTENCODE+ZOPFLI+%s" %
+                (self.obj_num, best_opt)
+            )
+        else:
+            _logger.info(
+                "Best strategy for object %d stream = ZOPFLI+%s" %
+                (self.obj_num, best_opt)
             )
 
-            if len(zopfli_stream) < len(zopfli_rle_stream):
-                _logger.debug(
-                    ("Zopfli alone is better than RLE + Zopfli for object %d "
-                     "(%d -> %d)"
-                     ) % (self.obj_num, len(self.stream), len(zopfli_rle_stream))
-                )
-                filters.items.insert(0, key_flate_decode)
-                decode_parms.items.insert(0, PDFNull())
-                self.stream = PDFStream(zopfli_stream)
-                self.value[b"Filter"] = filters
-                self.value[b"DecodeParms"] = decode_parms
-                self.value[b"Length"] = PDFNumber(len(zopfli_stream))
-            else:
-                _logger.debug(
-                    ("RLE + Zopfli is better than Zopfli alone for object %d "
-                     "(%d -> %d)"
-                     ) % (self.obj_num, len(self.stream), len(zopfli_rle_stream))
-                )
-                filters.items.insert(0, key_rle_decode)
-                decode_parms.items.insert(0, PDFNull())
-                filters.items.insert(0, key_flate_decode)
-                if colors != None or columns != None:
-                    parms = {}
-                    parms[PDFName(b"Predictor")] = PDFNumber(0)
-                    if colors != None:
-                        parms[PDFName(b"Colors")] = colors
+        if best_opt == "RLE":
+            filters.items.insert(0, key_rle_decode)
+            decode_parms.items.insert(0, PDFNull())
+            columns = None
+            colors = None
 
-                    if columns != None:
-                        parms[PDFName(b"Columns")] = columns
+        filters.items.insert(0, key_flate_decode)
 
-                    decode_parms.items.insert(0, PDFDictionary(parms))
-                else:
-                    decode_parms.items.insert(0, PDFNull())
+        if colors != None or columns != None:
+            parms = {}
+            if best_opt == "NONE" or best_opt == "RLE":
+                parms[PDFName(b"Predictor")] = PDFNumber(PREDICTOR_NONE)
+            elif best_opt == "AUTO":
+                parms[PDFName(b"Predictor")] = PDFNumber(PREDICTOR_PNG_OPTIMUM)
 
-                self.stream = PDFStream(zopfli_rle_stream)
-                self.value[b"Filter"] = filters
-                self.value[b"DecodeParms"] = decode_parms
-                self.value[b"Length"] = PDFNumber(len(zopfli_rle_stream))
+            if colors != None:
+                parms[PDFName(b"Colors")] = colors
+
+            if columns != None:
+                parms[PDFName(b"Columns")] = columns
+
+            decode_parms.items.insert(0, PDFDictionary(parms))
+        else:
+            decode_parms.items.insert(0, PDFNull())
+
+        self.stream = PDFStream(zopfli_stream)
+        self.value[b"Filter"] = filters
+        self.value[b"DecodeParms"] = decode_parms
+        self.value[b"Length"] = PDFNumber(len(zopfli_stream))

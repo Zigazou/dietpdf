@@ -61,8 +61,22 @@ class PDFNumber(PDFToken):
         if type(self.value) == int:
             human = str(self.value)
         else:
-            human = str(round(self.value, 2))
+            # Smart float rounding.
+            if self.value != 0.0:
+                for precision in range(2, 5):
+                    float_rounded = round(self.value, precision)
+                    if float_rounded != 0.0:
+                        break
 
+                human = str(float_rounded)
+            else:
+                human = "0"
+
+        # Remove trailing .0
+        if len(human) > 2 and human[-2:] == ".0":
+            human = human[:-2]
+
+        # Remove leading zero.
         if len(human) > 1 and human[0] == "0":
             human = human[1:]
 

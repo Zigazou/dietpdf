@@ -5,6 +5,8 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
+from zlib import compress
+
 PREDICTOR_NONE = 1
 PREDICTOR_TIFF = 2
 PREDICTOR_PNG_NONE = 10
@@ -13,6 +15,48 @@ PREDICTOR_PNG_UP = 12
 PREDICTOR_PNG_AVERAGE = 13
 PREDICTOR_PNG_PAETH = 14
 PREDICTOR_PNG_OPTIMUM = 15
+
+
+def predictor_tiff_decode(stream: bytes, columns: int, colors: int) -> bytes:
+    """Decode a stream encoded with the TIFF predictor.
+
+    :param stream: The byte sequence to decode
+    :type stream: bytes
+    :param columns: Number of columns
+    :type columns: int
+    :param colors: Number of bytes for one pixel (ie. 3 for 24 bit RGB)
+    :type colors: int
+    :return: the byte sequence decoded
+    :rtype: bytes
+    :raise ValueError: If the byte sequence length is not a multiple of columns
+        number (with colors taken into account)
+    """
+
+    assert type(stream) == bytes
+    assert type(columns) == int
+    assert type(colors) == int
+
+    # The stream length must be a multiple columns * colors.
+    if len(stream) % (columns * colors) != 0:
+        raise ValueError(
+            "length of stream (%d) to decode is not a multiple of %d" %
+            (len(stream), columns * colors)
+        )
+
+    output = b""
+    for offset in range(0, len(stream), columns * colors):
+        current_row = stream[offset:offset+columns * colors]
+
+        row_decoded = [0] * colors
+        for column in range(columns * colors):
+            row_decoded.append(
+                (current_row[column]+row_decoded[column]) % 256
+            )
+        row_decoded = bytes(row_decoded[colors:])
+
+        output += row_decoded
+
+    return output
 
 
 def paeth_predictor(left: int, above: int, upper_left: int) -> int:
@@ -216,5 +260,103 @@ def predictor_png_decode(stream: bytes, columns: int, colors: int) -> bytes:
 
         output += row_decoded
         previous_row = row_decoded
+
+    return output
+
+
+def predictor_png_best_encode(stream: bytes, columns: int, colors: int) -> bytes:
+    """Decode a stream encoded with PNG predictor(s).
+
+    See https://www.w3.org/TR/PNG-Filters.html for more information.
+
+    :param stream: The byte sequence to encode
+    :type stream: bytes
+    :param columns: Number of columns
+    :type columns: int
+    :param colors: Number of bytes for one pixel (ie. 3 for 24 bit RGB)
+    :type colors: int
+    :return: the byte sequence decoded
+    :rtype: bytes
+    :raise ValueError: If the byte sequence length is not a multiple of columns
+        number (with colors taken into account)
+    """
+
+    assert type(stream) == bytes
+    assert type(columns) == int
+    assert type(colors) == int
+
+    if len(stream) % (columns * colors) != 0:
+        raise ValueError(
+            "length of stream to encode (%d) is not a multiple of columns (%d)"
+            % (len(stream), columns)
+        )
+
+    output = b""
+    previous_row = bytes([0] * columns * colors)
+    for offset in range(0, len(stream), columns * colors):
+        current_row = stream[offset:offset+columns*colors]
+
+        row_encoded = {}
+
+        # Predictor NONE
+        row_encoded[ROW_NONE] = current_row
+
+        # Predictor SUB
+        current_row = b"\0" * colors + current_row
+        row_encoded[ROW_SUB] = bytes([
+            (current_row[column + colors] - current_row[column]) % 256
+            for column in range(columns * colors)
+        ])
+        current_row = current_row[colors:]
+
+        # Predictor UP
+        row_encoded[ROW_UP] = bytes([
+            (current_row[column] - previous_row[column]) % 256
+            for column in range(columns * colors)
+        ])
+
+        # Predictor AVERAGE
+        current_row = b"\0" * colors + current_row
+        row_encoded[ROW_AVERAGE] = bytes([
+            (
+                current_row[column + colors] -
+                (current_row[column] + previous_row[column]) // 2
+            ) % 256
+            for column in range(columns * colors)
+        ])
+        current_row = current_row[colors:]
+
+        # Predictor PAETH
+        current_row = b"\0" * colors + current_row
+        previous_row = b"\0" * colors + previous_row
+        row_encoded[ROW_PAETH] = bytes([
+            (
+                current_row[column + colors] -
+                paeth_predictor(
+                    current_row[column],
+                    previous_row[column + colors],
+                    previous_row[column]
+                )
+            ) % 256
+            for column in range(columns * colors)
+        ])
+        current_row = current_row[colors:]
+
+        # Find most compressible predictor.
+        compressed_rows = {
+            predictor: compress(
+                b"%c%s" % (predictor, row_encoded[predictor]), 5
+            )
+            for predictor in row_encoded
+        }
+
+        best_predictor = ROW_NONE
+        for predictor in compressed_rows:
+            if len(compressed_rows[predictor]) < len(compressed_rows[best_predictor]):
+                best_predictor = predictor
+
+        # Output the predicted row
+        output += b"%c%s" % (best_predictor, row_encoded[best_predictor])
+        previous_row = current_row
 
     return output

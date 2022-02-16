@@ -35,5 +35,6 @@ def hex_to_bytes(hexstring: bytes) -> bytes:
     cleaned = cleaned.replace(b"\\", b"\\\\")
     cleaned = cleaned.replace(b"(", b"\\(")
     cleaned = cleaned.replace(b")", b"\\)")
+    cleaned = cleaned.replace(b"\r", b"\\r")
 
     return cleaned

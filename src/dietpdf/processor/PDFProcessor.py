@@ -9,12 +9,13 @@ from logging import getLogger
 
 from dietpdf.token import (
     PDFNumber, PDFListOpen, PDFDictOpen, PDFCommand, PDFListClose,
-    PDFDictClose, PDFComment, PDFName
+    PDFDictClose, PDFComment
 )
 
 from dietpdf.item import (
-    PDFReference, PDFObjectID, PDFList, PDFDictionary, PDFXrefSubSection,
-    PDFObject, PDFTrailer, PDFStartXref, PDFXref, PDFStream
+    PDFReference, PDFObjectID, PDFList, PDFDictionary,
+    PDFObject, PDFTrailer, PDFStartXref, PDFXref, PDFStream, PDFXrefStream,
+    PDFObjectStream, PDFXrefSubSection
 )
 
 from dietpdf.pdf import PDF
@@ -23,12 +24,18 @@ from .TokenProcessor import TokenProcessor
 
 _logger = getLogger("PDFProcessor")
 
+
+class EncryptionNotImplemented(Exception):
+    pass
+
+
 class PDFProcessor(TokenProcessor):
     """A PDF processor
 
     A PDF processor is a stack machine. It recognizes some command and executes
     them, changing the stack state.
     """
+
     def __init__(self):
         self.tokens = PDF()
 
@@ -76,12 +83,29 @@ class PDFProcessor(TokenProcessor):
             value = stream
             stream = None
 
+        if type(value) == PDFDictionary:
+            if b"Encrypt" in value:
+                raise EncryptionNotImplemented()
+
         object_id = self.tokens.pop()
         object = PDFObject(object_id.obj_num, object_id.gen_num, value, stream)
+
+        if object.obj_num in self.tokens.objects:
+            # Remove objects in the stack with the same number.
+            def any_object_with_same_number(_, item):
+                return (
+                    type(item) == PDFObject and
+                    item.obj_num == object.obj_num
+                )
+
+            for index, _ in self.tokens.find(any_object_with_same_number):
+                self.tokens.pop(index)
+                break
+
         self.tokens.push(object)
 
     def _convert_startxref(self):
-        any_startxref_command = lambda _, item: (
+        def any_startxref_command(_, item): return (
             type(item) == PDFCommand and
             item.command == b"startxref"
         )
@@ -94,7 +118,7 @@ class PDFProcessor(TokenProcessor):
             )
 
     def _convert_xref(self):
-        any_xref_command = lambda _, item: (
+        def any_xref_command(_, item): return (
             type(item) == PDFCommand and
             item.command == b"xref"
         )
@@ -121,7 +145,7 @@ class PDFProcessor(TokenProcessor):
             self.tokens.insert(offset, xref)
 
     def _convert_trailer(self):
-        any_trailer_command = lambda _, item: (
+        def any_trailer_command(_, item): return (
             type(item) == PDFCommand and
             item.command == b"trailer"
         )
@@ -132,7 +156,7 @@ class PDFProcessor(TokenProcessor):
 
     def end_parsing(self):
         """Converts remaining items on the stack.
-        
+
         The `startxref`, `xref` and `trailer` elements of a PDF file do not
         follow a stack principle. They must therefore be recognized when all the
         parsing has been done.
@@ -145,7 +169,7 @@ class PDFProcessor(TokenProcessor):
 
     def push(self, item):
         """Push an item onto the processor's stack.
-        
+
         Pushing item on stack may result in their interpretation. For example,
         pushing `1` then `0` then `R` on the stack will make the processor
         replace them by a `PDFReference` object.
@@ -203,35 +227,40 @@ class PDFProcessor(TokenProcessor):
 
             return True
 
+        def any_object_stream(_, item):
+            return type(item) == PDFObjectStream
+
         output = PDFComment(b"%PDF-1.7").encode()
         offset = len(output)
 
-        # Write every object
+        # Write every object.
         xref_entries = {}
         max_obj_num = 0
         for _, item in self.tokens.find(any_object):
             item.item_offset = offset
-            xref_entries[item.obj_num] = (offset, 0, "n")
+            xref_entries[item.obj_num] = (1, offset, 0)
             max_obj_num = max(max_obj_num, item.obj_num)
 
             item_encoded = item.encode()
             offset += len(item_encoded)
             output += item_encoded
 
-        # Write the XRef table
-        xref_subsection = PDFXrefSubSection(0, max_obj_num + 1)
-        for index in range(max_obj_num + 1):
-            if index in xref_entries:
-                xref_subsection.entries.append(xref_entries[index])
-            else:
-                xref_subsection.entries.append((0, 65535, "f"))
+        # Write every object stream.
+        for _, item in self.tokens.find(any_object_stream):
+            index = 0
+            xref_entries[item.obj_num] = (1, offset, 0)
+            max_obj_num = max(max_obj_num, item.obj_num)
 
-        xref = PDFXref()
-        xref.subsections.append(xref_subsection)
+            for object in item.objects:
+                xref_entries[object.obj_num] = (2, item.obj_num, index)
+                max_obj_num = max(max_obj_num, object.obj_num)
+                index += 1
 
-        output += xref.encode()
+            item_encoded = item.encode()
+            offset += len(item_encoded)
+            output += item_encoded
 
-        # Write the Trailer dictionary
+        # Retrieve trailer information.
         def any_trailer(_, item):
             return (
                 type(item) == PDFTrailer or
@@ -250,20 +279,24 @@ class PDFProcessor(TokenProcessor):
             old_trailer = trailers[-1][1]
 
         if type(old_trailer) == PDFObject:
-            trailer_dictionary = PDFDictionary({
-                PDFName(b"Info"): old_trailer[b"Info"],
-                PDFName(b"Root"): old_trailer[b"Root"],
-                PDFName(b"Size"): PDFNumber(max_obj_num + 1),
-            })
+            trailer_info = old_trailer[b"Info"]
+            trailer_root = old_trailer[b"Root"]
         else:
-            trailer_dictionary = PDFDictionary({
-                PDFName(b"Info"): old_trailer.dictionary[b"Info"],
-                PDFName(b"Root"): old_trailer.dictionary[b"Root"],
-                PDFName(b"Size"): PDFNumber(max_obj_num + 1),
-            })
+            trailer_info = old_trailer.dictionary[b"Info"]
+            trailer_root = old_trailer.dictionary[b"Root"]
 
-        trailer = PDFTrailer(trailer_dictionary)
-        output += trailer.encode()
+        # Write the XRef stream.
+        references = {}
+        for index in range(max_obj_num + 1):
+            if index in xref_entries:
+                references[index] = xref_entries[index]
+            else:
+                references[index] = (0, 65535, 0)
+
+        xrefstm = PDFXrefStream(max_obj_num + 1, 0, references)
+        xrefstm.trailer_info = trailer_info
+        xrefstm.trailer_root = trailer_root
+        output += xrefstm.encode()
 
         # Write the startxref offset
         output += b"startxref\n%d\n" % offset
