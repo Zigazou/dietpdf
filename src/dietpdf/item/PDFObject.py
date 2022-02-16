@@ -221,7 +221,7 @@ class PDFObject(PDFItem):
                     )
                     """
 
-            if parms and b"Predictor" in parms:
+            if type(parms) == PDFDictionary and b"Predictor" in parms:
                 columns = parms[b"Columns"].value
 
                 if b"Colors" in parms:
