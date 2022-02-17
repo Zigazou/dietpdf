@@ -6,7 +6,7 @@ __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
 from dietpdf.processor.TokenProcessor import TokenProcessor
-from dietpdf.item import optimize_content_stream
+from dietpdf.item.content_stream import optimize_content_stream
 
 def create_content_stream_1():
     return b"""

@@ -1,11 +1,12 @@
-from dietpdf.item import PDFTrailer, PDFDictionary
-
 __author__ = "Frédéric BISSON"
 __copyright__ = "Copyright 2022, Frédéric BISSON"
 __credits__ = ["Frédéric BISSON"]
 __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
+
+from dietpdf.item.PDFTrailer import PDFTrailer
+from dietpdf.item.PDFDictionary import PDFDictionary
 
 
 def test_PDFTrailer_bool():

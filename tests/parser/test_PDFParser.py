@@ -1,11 +1,3 @@
-from random import seed, randrange, choice
-from zlib import decompress
-
-from dietpdf.parser.PDFParser import PDFParser
-from dietpdf.processor.PDFProcessor import PDFProcessor
-from dietpdf.token import PDFString, PDFHexString, PDFNumber
-from dietpdf.item import PDFObject
-
 __author__ = "Frédéric BISSON"
 __copyright__ = "Copyright 2022, Frédéric BISSON"
 __credits__ = ["Frédéric BISSON"]
@@ -13,20 +5,31 @@ __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
+from random import seed, randrange, choice
+from zlib import decompress
+
+from dietpdf.parser.PDFParser import PDFParser
+from dietpdf.processor.PDFProcessor import PDFProcessor
+
+from dietpdf.token.PDFString import PDFString
+from dietpdf.token.PDFHexString import PDFHexString
+from dietpdf.token.PDFNumber import PDFNumber
+
+from dietpdf.item.PDFObject import PDFObject
+
 
 def test_PDFParser_stream():
     seed(2022)
 
     after_stream = [b"\r\n", b"\n"]
-    before_endstream = [b"\n", b""]
 
     for _ in range(64):
         processor = PDFProcessor()
         parser = PDFParser(processor)
 
         raw_data = bytes([randrange(256) for _ in range(randrange(5000))])
-        pdf_stream = b"0 0 obj\n8\nstream%s%s%sendstream\nendobj\n" % (
-            choice(after_stream), raw_data, choice(before_endstream)
+        pdf_stream = b"0 0 obj\n8\nstream%s%sendstream\nendobj\n" % (
+            choice(after_stream), raw_data
         )
 
         parser.parse(pdf_stream)

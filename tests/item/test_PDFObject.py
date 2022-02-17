@@ -1,12 +1,13 @@
-from dietpdf.token import PDFNumber
-from dietpdf.item import PDFObject, PDFDictionary
-
 __author__ = "Frédéric BISSON"
 __copyright__ = "Copyright 2022, Frédéric BISSON"
 __credits__ = ["Frédéric BISSON"]
 __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
+
+from dietpdf.token.PDFNumber import PDFNumber
+from dietpdf.item.PDFObject import PDFObject
+from dietpdf.item.PDFDictionary import PDFDictionary
 
 
 def test_PDFObject_bool():

@@ -7,10 +7,16 @@ __email__ = "zigazou@protonmail.com"
 
 import pytest
 
-from dietpdf.token import PDFName, PDFString, PDFNumber, PDFComment
-from dietpdf.item import (
-    PDFObject, PDFDictionary, PDFReference, PDFList, PDFNull
-)
+from dietpdf.token.PDFName import PDFName
+from dietpdf.token.PDFString import PDFString
+from dietpdf.token.PDFNumber import PDFNumber
+from dietpdf.token.PDFComment import PDFComment
+
+from dietpdf.item.PDFObject import PDFObject
+from dietpdf.item.PDFDictionary import PDFDictionary
+from dietpdf.item.PDFReference import PDFReference
+from dietpdf.item.PDFList import PDFList
+from dietpdf.item.PDFNull import PDFNull
 
 from dietpdf.pdf.PDF import PDF
 

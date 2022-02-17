@@ -6,7 +6,7 @@ __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
 
-from dietpdf.info import decode_objstm
+from dietpdf.info.decode_objstm import decode_objstm
 
 def create_stream():
     return b"""11 0 12 54 13 107

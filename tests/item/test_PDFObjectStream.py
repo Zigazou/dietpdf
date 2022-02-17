@@ -6,15 +6,19 @@ __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
 from zlib import decompress
-from dietpdf.token import PDFName, PDFString, PDFNumber
+from dietpdf.token.PDFName import PDFName
+from dietpdf.token.PDFString import PDFString
+from dietpdf.token.PDFNumber import PDFNumber
 
-from dietpdf.item import (
-    PDFObject, PDFObjectStream, PDFDictionary, PDFReference, PDFList
-)
+from dietpdf.item.PDFObject import PDFObject
+from dietpdf.item.PDFObjectStream import PDFObjectStream
+from dietpdf.item.PDFDictionary import PDFDictionary
+from dietpdf.item.PDFReference import PDFReference
+from dietpdf.item.PDFList import PDFList
 
 from dietpdf.processor.PDFProcessor import PDFProcessor
 from dietpdf.parser.PDFParser import PDFParser
-from dietpdf.info import convert_objstm
+from dietpdf.info.decode_objstm import convert_objstm
 
 
 def create_objects() -> list:

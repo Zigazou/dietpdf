@@ -1,6 +1,6 @@
 import pytest
 
-from dietpdf.filter import hex_to_bytes
+from dietpdf.filter.hex_to_bytes import hex_to_bytes
 
 __author__ = "Frédéric BISSON"
 __copyright__ = "Copyright 2022, Frédéric BISSON"

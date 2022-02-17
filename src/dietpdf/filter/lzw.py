@@ -19,7 +19,7 @@ class UnableToLZWDecode(Exception):
 
 def lzw_encode(content: bytes) -> bytes:
     """Compress a byte string using LZW."""
-
+    """
     assert type(content) == bytes
 
     output = b""
@@ -38,7 +38,7 @@ def lzw_encode(content: bytes) -> bytes:
 
 
     output = b""
-
+    """
 
 def lzw_decode(content: bytes) -> bytes:
     """Uncompress a byte string using LZW."""

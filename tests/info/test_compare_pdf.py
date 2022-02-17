@@ -7,7 +7,7 @@ __email__ = "zigazou@protonmail.com"
 
 from shutil import which
 
-from dietpdf.info import compare_pdf
+from dietpdf.info.compare_pdf import compare_pdf
 
 def test_compare_pdf_identical():
     differences = compare_pdf(

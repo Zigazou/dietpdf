@@ -1,14 +1,21 @@
-import pytest
-
-from dietpdf.token import PDFName, PDFString, PDFNumber
-from dietpdf.item import deep_find, PDFObject, PDFDictionary, PDFList, PDFItem
-
 __author__ = "Frédéric BISSON"
 __copyright__ = "Copyright 2022, Frédéric BISSON"
 __credits__ = ["Frédéric BISSON"]
 __license__ = "mit"
 __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
+
+import pytest
+
+from dietpdf.token.PDFName import PDFName
+from dietpdf.token.PDFString import PDFString
+from dietpdf.token.PDFNumber import PDFNumber
+
+from dietpdf.item.deep_find import deep_find
+from dietpdf.item.PDFObject import PDFObject
+from dietpdf.item.PDFDictionary import PDFDictionary
+from dietpdf.item.PDFList import PDFList
+from dietpdf.item.PDFItem import PDFItem
 
 
 def create_object() -> PDFObject:
@@ -44,6 +51,7 @@ def test_deep_find_number():
     print(all_numbers)
     assert len(all_numbers) == 8
 
+
 def test_deep_find_string():
     object = create_object()
 
@@ -56,6 +64,7 @@ def test_deep_find_string():
     assert all_strings[0][1] == b"http://example.com/2"
     assert all_strings[0][0] == ["A", "URI"]
 
+
 def test_deep_find_uri():
     object = create_object()
 
@@ -67,6 +76,7 @@ def test_deep_find_uri():
     assert len(all_uri) == 1
     assert all_uri[0][1] == b"http://example.com/2"
     assert all_uri[0][0] == ["A", "URI"]
+
 
 def test_deep_find_dummy():
     object = create_object()

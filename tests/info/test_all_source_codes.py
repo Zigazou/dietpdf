@@ -8,7 +8,7 @@ __email__ = "zigazou@protonmail.com"
 
 from dietpdf.parser.PDFParser import PDFParser
 from dietpdf.processor.PDFProcessor import PDFProcessor
-from dietpdf.info import all_source_codes
+from dietpdf.info.all_source_codes import all_source_codes
 
 
 def test_all_source_codes():
