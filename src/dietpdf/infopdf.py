@@ -24,13 +24,102 @@ from .processor.PDFProcessor import PDFProcessor
 from .item.PDFObject import PDFObject
 from .item.PDFList import PDFList
 from .item.PDFDictionary import PDFDictionary
+from .item.PDFReference import PDFReference
+from .item.PDFTrailer import PDFTrailer
+from .item.deep_find import deep_find
 from .info.decode_objstm import convert_objstm
 from . import __version__
 
 _logger = logging.getLogger(__name__)
 
 
-def infopdf(input_pdf_name: str):
+def info_hyperlinks(pdf):
+    def any_link(_, item): return (
+        type(item) == PDFObject and type(item.value) == PDFDictionary and
+        b"Type" in item.value and item.value[b"Type"] == b"Annot" and
+        b"Subtype" in item.value and item.value[b"Subtype"] == b"Link"
+    )
+
+    urls = set()
+    for _, object in pdf.find(any_link):
+        link = pdf.get(object, ["A", "URI"])
+        if link:
+            urls.add(link.to_string())
+
+    return urls
+
+def info_filters(pdf):
+    def any_filter(_, item): return (
+        type(item) == PDFObject and
+        type(item.value) == PDFDictionary and b"Filter" in item.value
+    )
+
+    filters = set()
+    for _, object in pdf.find(any_filter):
+        filter = object.value[b"Filter"]
+
+        if type(filter) == PDFList:
+            for item in filter:
+                filters.add(str(item))
+        else:
+            filters.add(str(object.value[b"Filter"]))
+
+    return filters
+
+def info_types(pdf):
+    def any_object_with_type(_, item): return type(item) == PDFObject
+
+    labels = {}
+    for _, object in pdf.find(any_object_with_type):
+        if type(object.value) == PDFDictionary:
+            if b"Type" in object:
+                if b"Subtype" in object:
+                    label = "%s/%s" % (
+                        str(object.value[b"Type"]),
+                        str(object.value[b"Subtype"])
+                    )
+                else:
+                    label = "%s" % str(object.value[b"Type"])
+            elif b"Linearized" in object:
+                label = "(Linearized)"
+            else:
+                label = ""
+        else:
+            label = ""
+
+        stream = object.has_stream()
+
+        labels[object.obj_num] = (label, stream)
+
+    return labels
+
+def info_graph(pdf):
+    def any_object(_, item): return type(item) == PDFObject
+    def any_reference(_, item): return type(item) == PDFReference
+    def any_trailer(_, item): return type(item) == PDFTrailer
+
+    directed_links = set()
+    for _, object in pdf.find(any_object):
+        for path, item in deep_find(object, any_reference):
+            if type(path[-1]) == int and len(path) > 1:
+                relation = "%s[%d]" % (path[-2], path[-1])
+            else:
+                relation = path[-1]
+            directed_links.add((object.obj_num, relation, item.obj_num))
+
+    for index, object in pdf.find(any_trailer):
+        for path, item in deep_find(object, any_reference):
+            if type(path[-1]) == int and len(path) > 1:
+                relation = "%s[%d]" % (path[-2], path[-1])
+            else:
+                relation = path[-1]
+            directed_links.add(("trailer-%s" % index, relation, item.obj_num))
+
+    return directed_links
+
+ALL_INFO = "all"
+
+def infopdf(infotype: str, input_pdf_name: str):
     """Reduce PDF file size
 
     Args:
@@ -48,45 +137,98 @@ def infopdf(input_pdf_name: str):
     pdf = processor.tokens
 
     # Print all hyperlinks.
-    def any_link(_, item): return (
-        type(item) == PDFObject and type(item.value) == PDFDictionary and
-        b"Type" in item.value and item.value[b"Type"] == b"Annot" and
-        b"Subtype" in item.value and item.value[b"Subtype"] == b"Link"
-    )
+    if infotype in [ALL_INFO, "hyperlink"]:
+        print("/* hyperlink */")
+        for url in info_hyperlinks(pdf):
+            print(url)
 
-    urls = set()
-    for _, object in pdf.find(any_link):
-        link = pdf.get(object, ["A", "URI"])
-        if link:
-            urls.add(link.to_string())
-
-    print("[HYPERLINK]")
-    for url in urls:
-        print(url)
-
-    print()
+        print()
 
     # Print all filters used.
-    def any_filter(_, item): return (
-        type(item) == PDFObject and
-        type(item.value) == PDFDictionary and b"Filter" in item.value
-    )
+    if infotype in [ALL_INFO, "filter"]:
+        print("/* filter */")
+        for filter in info_filters(pdf):
+            print(filter)
 
-    filters = set()
-    for _, object in pdf.find(any_filter):
-        filter = object.value[b"Filter"]
+        print()
 
-        if type(filter) == PDFList:
-            for item in filter:
-                filters.add(str(item))
-        else:
-            filters.add(str(object.value[b"Filter"]))
+    # Print all relations.
+    if infotype in [ALL_INFO, "graph"]:
+        print("/* graph */")
+        print("digraph {")
 
-    print("[FILTER]")
-    for filter in filters:
-        print(filter)
+        print("  rankdir = LR;")
+        print("  splines = polyline;")
+        print(
+            "  node ["
+            "shape=rectangle, "
+            "fontname=\"IBM Plex Sans Condensed:style=Regular\""
+            "]"
+        )
 
-    print()
+        print(
+            "  edge ["
+            "fontname=\"IBM Plex Sans Condensed:style=Regular\""
+            "]"
+        )
+
+        labels = info_types(pdf)
+
+        pages = [
+            "%d;" % obj_num
+            for obj_num in labels
+            if labels[obj_num][0] == "Page"
+        ]
+
+        catalogs = [
+            "%d;" % obj_num
+            for obj_num in labels
+            if labels[obj_num][0] == "Catalog" or labels[obj_num][0] == "Pages"
+        ]
+
+        pagess = [
+            "%d;" % obj_num
+            for obj_num in labels
+            if labels[obj_num][0] == "Pages"
+        ]
+
+        print("  subgraph cluster_page { rank = same; %s }" % " ".join(pages))
+        print("  subgraph cluster_catalog { rank = same; %s }" % " ".join(catalogs))
+        """
+        print("  subgraph cluster_pages { rank = same; %s }" % " ".join(pagess))
+        """
+
+        for obj_num in labels:
+            label, stream = labels[obj_num]
+
+            if stream:
+                if label:
+                    print(
+                        "  \"%s\" [shape=record, label=\"{{%s|(✉)}|%s}\"]" %
+                        (obj_num, obj_num, label)
+                    )
+                else:
+                    print(
+                        "  \"%s\" [shape=record, label=\"%s|(✉)\"]" %
+                        (obj_num, obj_num)
+                    )
+            else:
+                if label:
+                    print(
+                        "  \"%s\" [shape=record, label=\"{%s|%s}\"]" %
+                        (obj_num, obj_num, label)
+                    )
+                else:
+                    print("  \"%s\" [label=\"%s\"]" % (obj_num, obj_num))
+
+        for origin, relation, destination in info_graph(pdf):
+            print(
+                "  \"%s\" -> \"%s\" [label=\"%s\"]" %
+                (origin, destination, relation)
+            )
+
+        print("}")
+        print()
 
 def parse_args(args):
     """Parse command line parameters
@@ -103,6 +245,13 @@ def parse_args(args):
         "--version",
         action="version",
         version="dietpdf {ver}".format(ver=__version__),
+    )
+
+    parser.add_argument(
+        dest="infotype",
+        help="type of information to extract",
+        type=str,
+        metavar="[all|hyperlink|filter|graph]"
     )
 
     parser.add_argument(
@@ -158,7 +307,7 @@ def main(args):
     setup_logging(args.loglevel)
     _logger.debug("Getting info about a PDF")
 
-    infopdf(args.input_pdf)
+    infopdf(args.infotype, args.input_pdf)
 
     _logger.info("PDF info done")
 

@@ -39,4 +39,4 @@ def optimize_content_stream(stream: bytes) -> bytes:
 
     # The encode method will remove unnecessary spaces and convert any white
     # spaces including line returns into standard space.
-    return stack.encode()
+    return stack.encode() + b"\n"

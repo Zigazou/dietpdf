@@ -19,11 +19,12 @@ import argparse
 import logging
 import sys
 
-from dietpdf.parser.PDFParser import PDFParser
-from dietpdf.processor.PDFProcessor import PDFProcessor
-from dietpdf.item import PDFObject
-from dietpdf.info import all_source_codes
-from dietpdf import __version__
+from .parser.PDFParser import PDFParser
+from .processor.PDFProcessor import PDFProcessor
+from .item.PDFObject import PDFObject
+from .info.all_source_codes import all_source_codes
+from .info.decode_objstm import convert_objstm
+from . import __version__
 
 _logger = logging.getLogger(__name__)
 
@@ -42,6 +43,8 @@ def extractpdf(input_pdf_name: str, base: str):
     parser = PDFParser(processor)
     parser.parse(pdf_file_content)
     processor.end_parsing()
+
+    #convert_objstm(processor.tokens)
 
     # Find all content objects
     content_objects_set = all_source_codes(processor.tokens)
@@ -155,11 +158,11 @@ def main(args):
     """
     args = parse_args(args)
     setup_logging(args.loglevel)
-    _logger.debug("Getting info about a PDF")
+    _logger.debug("Extracting objects from PDF")
 
     extractpdf(args.input_pdf, args.base)
 
-    _logger.info("PDF info done")
+    _logger.info("PDF extraction done")
 
 
 def run():

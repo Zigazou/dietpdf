@@ -19,7 +19,6 @@ def jpegtran_optimize(content: bytes) -> bytes:
         return None
 
     # Run jpegtran discarding anything unneeded in the JPEG file.
-
     jpegoptim_optimized = Popen(
         ["jpegoptim", "--all-progressive", "--max=85", "--strip-all", "--stdin", "--stdout"],
         stdin=PIPE,

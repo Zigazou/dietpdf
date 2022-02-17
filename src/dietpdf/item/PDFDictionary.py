@@ -100,6 +100,9 @@ class PDFDictionary(PDFItem):
     def __next__(self):
         return self.items.__next__()
 
+    def delete(self, key):
+        del self.items[key]
+
     def encode(self) -> bytes:
         output = b"<<"
 

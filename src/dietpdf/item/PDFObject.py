@@ -6,7 +6,7 @@ __maintainer__ = "Frédéric BISSON"
 __email__ = "zigazou@protonmail.com"
 
 from zlib import compress, decompress
-from base64 import a85decode
+from base64 import a85decode, encode
 from logging import getLogger
 
 from ..filter.zopfli import zopfli_deflate
@@ -157,7 +157,7 @@ class PDFObject(PDFItem):
             )
 
         if self.stream != None:
-            output += b"stream\n%s\nendstream\nendobj\n" % self.stream.encode()
+            output += b"stream\n%sendstream\nendobj\n" % self.stream.encode()
         elif self.value.__class__.__name__ in NO_SPACE:
             output += b"endobj\n"
         else:
@@ -252,7 +252,7 @@ class PDFObject(PDFItem):
         """
         # No stream, nothing to optimize.
         if not self.has_stream():
-            return b""
+            return
 
         stream = self.decode_stream()
 
@@ -267,6 +267,7 @@ class PDFObject(PDFItem):
         key_flate_decode = PDFName(b"FlateDecode")
         key_lzw_decode = PDFName(b"LZWDecode")
         key_rle_decode = PDFName(b"RunLengthDecode")
+        key_jbig2_decode = PDFName(b"JBIG2Decode")
         key_ascii85_decode = PDFName(b"ASCII85Decode")
 
         # Retrieve filter(s)
@@ -290,8 +291,11 @@ class PDFObject(PDFItem):
         colors = None
         columns = None
         dctencoded = False
+        jbig2encoded = False
+        deflateencoded = False
         while index < len(filters.items):
             if filters.items[index] == key_flate_decode:
+                deflateencoded = True
                 filters.items.pop(index)
                 parms = decode_parms.items.pop(index)
                 if isinstance(parms, PDFDictionary):
@@ -313,6 +317,9 @@ class PDFObject(PDFItem):
                     key_columns = PDFName(b"Columns")
                     if key_columns in parms:
                         columns = parms[key_columns]
+            elif filters.items[index] == key_jbig2_decode:
+                jbig2encoded = True
+                index += 1
             elif filters.items[index] == key_dct_decode:
                 dctencoded = True
                 stream = jpegtran_optimize(stream)
@@ -323,7 +330,7 @@ class PDFObject(PDFItem):
             else:
                 index += 1
 
-        if not dctencoded:
+        if not dctencoded and not jbig2encoded:
             if not columns and b"Width" in self.value:
                 columns = self.value[b"Width"]
 
@@ -363,25 +370,42 @@ class PDFObject(PDFItem):
         _logger.debug("Try Zopfli")
 
         # Compression has no gain.
-        if len(zopfli_stream) >= len(self.stream):
+        if jbig2encoded or len(zopfli_stream) >= len(self.stream):
             if dctencoded:
                 _logger.info(
                     "Best strategy for object %d stream = DCTENCODE" %
+                    self.obj_num
+                )
+            elif jbig2encoded:
+                _logger.info(
+                    "Best strategy for object %d stream = JBIG2ENCODE" %
+                    self.obj_num
+                )
+            elif deflateencoded:
+                self.value[b"Filter"] = key_flate_decode
+                _logger.info(
+                    "Best strategy for object %d stream = DEFLATE" %
+                    self.obj_num
+                )
+            else:
+                _logger.info(
+                    "Best strategy for object %d stream = NONE" %
                     self.obj_num
                 )
 
             return
 
         if dctencoded:
-            _logger.info(
-                "Best strategy for object %d stream = DCTENCODE+ZOPFLI+%s" %
-                (self.obj_num, best_opt)
-            )
+            best_strategy = "DCTENCODE+"
+        elif jbig2encoded:
+            best_strategy = "JBIG2ENCODE+"
         else:
-            _logger.info(
-                "Best strategy for object %d stream = ZOPFLI+%s" %
-                (self.obj_num, best_opt)
-            )
+            best_strategy = ""
+
+        _logger.info(
+            "Best strategy for object %d stream = %sZOPFLI+%s" %
+                (self.obj_num, best_strategy, best_opt)
+        )
 
         if best_opt == "RLE":
             filters.items.insert(0, key_rle_decode)
@@ -391,11 +415,9 @@ class PDFObject(PDFItem):
 
         filters.items.insert(0, key_flate_decode)
 
-        if colors != None or columns != None:
+        if (colors or columns) and best_opt not in ["NONE", "RLE"]:
             parms = {}
-            if best_opt == "NONE" or best_opt == "RLE":
-                parms[PDFName(b"Predictor")] = PDFNumber(PREDICTOR_NONE)
-            elif best_opt == "AUTO":
+            if best_opt == "AUTO":
                 parms[PDFName(b"Predictor")] = PDFNumber(PREDICTOR_PNG_OPTIMUM)
 
             if colors != None:
@@ -409,6 +431,23 @@ class PDFObject(PDFItem):
             decode_parms.items.insert(0, PDFNull())
 
         self.stream = PDFStream(zopfli_stream)
-        self.value[b"Filter"] = filters
-        self.value[b"DecodeParms"] = decode_parms
+
+        if len(filters) == 0:
+            if b"Filter" in self.value:
+                self.value.delete(b"Filter")
+        elif len(filters) == 1:
+            self.value[b"Filter"] = filters[0]
+        else:
+            self.value[b"Filter"] = filters
+
+        if len(decode_parms) == 1:
+            decode_parms = decode_parms[0]
+            if type(decode_parms) == PDFNull:
+                if b"DecodeParms" in self.value:
+                    self.value.delete(b"DecodeParms")
+            else:
+                self.value[b"DecodeParms"] = decode_parms
+        else:
+            self.value[b"DecodeParms"] = decode_parms
+
         self.value[b"Length"] = PDFNumber(len(zopfli_stream))

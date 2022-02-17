@@ -9,6 +9,7 @@ from .PDFItem import PDFItem
 from .PDFDictionary import PDFDictionary
 from .PDFList import PDFList
 from .PDFObject import PDFObject
+from .PDFTrailer import PDFTrailer
 
 
 def deep_find(item: PDFItem, select: callable) -> list:
@@ -40,6 +41,8 @@ def deep_find(item: PDFItem, select: callable) -> list:
 
         if type(start) == PDFObject:
             found += _deep_find(path, start.value)
+        elif type(start) == PDFTrailer:
+            found += _deep_find(path, start.dictionary)
         elif type(start) == PDFDictionary:
             for key in start:
                 items = _deep_find(path + [str(key)], start[key])

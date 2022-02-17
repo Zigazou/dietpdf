@@ -68,7 +68,7 @@ def diet(input_pdf_name: str):
         sys.exit(3)
 
     # Extracts objects from object streams.
-    convert_objstm(processor.tokens)
+    #convert_objstm(processor.tokens)
 
     # Identifies every object whose stream is textual.
     source_codes = all_source_codes(processor.tokens)
