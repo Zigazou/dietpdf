@@ -54,6 +54,8 @@ Optimization of objects
 DietPDF will:
 
 * remove unnecessary spaces (for example befoire or after delimiters)
+  
+* group together contents objects of the same page (this helps compression)
 
 Optimization of JPEG images
 ===========================

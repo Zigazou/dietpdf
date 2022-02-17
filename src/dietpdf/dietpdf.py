@@ -27,6 +27,7 @@ from .processor.PDFProcessor import (
 from .item.PDFObject import PDFObject
 from .info.all_source_codes import all_source_codes
 from .info.decode_objstm import convert_objstm, create_objstm
+from .info.group_contents import group_contents
 from . import __version__
 
 _logger = logging.getLogger("dietpdf")
@@ -69,6 +70,7 @@ def diet(input_pdf_name: str):
 
     # Extracts objects from object streams.
     convert_objstm(processor.tokens)
+    group_contents(processor.tokens)
 
     # Identifies every object whose stream is textual.
     source_codes = all_source_codes(processor.tokens)
