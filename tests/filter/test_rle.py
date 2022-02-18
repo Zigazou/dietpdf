@@ -22,6 +22,8 @@ def test_rle_encode_decode():
     assert rle_decode(b"\365a") == b"aaaaaaaaaaaa"
     assert rle_decode(b"\365a\365b") == b"aaaaaaaaaaaabbbbbbbbbbbb"
     assert rle_decode(b"\365a\365b\000c\000d") == b"aaaaaaaaaaaabbbbbbbbbbbbcd"
+    very_long = b"a" * 2048 + b"x" + b"a" * 4096
+    assert rle_decode(rle_encode(very_long)) == very_long
 
     for _ in range(128):
         stream = bytes(

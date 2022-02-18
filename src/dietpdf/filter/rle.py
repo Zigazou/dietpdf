@@ -25,8 +25,9 @@ From Adobe PDF 32000-1:2008:
     alternating with FF) results in an expansion of 127 : 128.
 """
 
+import re
 
-def rle_encode(content: bytes) -> bytes:
+def rle_encode(input: bytes) -> bytes:
     """Encode a byte string using the RLE algorithm specified by the PDF
     specifications.
 
@@ -36,43 +37,32 @@ def rle_encode(content: bytes) -> bytes:
     :rtype: bytes
     """
 
-    assert type(content) == bytes
+    assert type(input) == bytes
 
-    output = bytearray(len(content) * 2)
+    rle_pattern = re.compile(
+        b"((.)\\2{1,126})|(((.)(?!\\5)){1,127})",
+        re.DOTALL
+    )
+
+    output = bytearray(len(input) * 2)
     output_offset = 0
     input_offset = 0
-    while input_offset < len(content):
-        current = content[input_offset]
+    while input_offset < len(input):
+        sequence = rle_pattern.match(input, input_offset)
+        repeat_char, different_chars = (sequence.group(1), sequence.group(3))
 
-        # Read as many following bytes identical to the current byte.
-        count = 1
-        input_offset += 1
-        while input_offset < len(content) and content[input_offset] == current and count < 127:
-            count += 1
-            input_offset += 1
-
-        if count == 1:
-            # The current byte does not repeat.
-            if input_offset == len(content):
-                # The current byte is the last byte.
-                output[output_offset:output_offset + 2] = b"\000%c" % current
-                output_offset += 2
-            else:
-                # Read as many different bytes
-                while input_offset < len(content) and content[input_offset] != current and count < 128:
-                    current = content[input_offset]
-                    count += 1
-                    input_offset += 1
-
-                output[output_offset:output_offset + count] = (
-                    b"%c%s" % (count - 1, content[input_offset - count:input_offset])
-                )
-                output_offset += count + 1
-
-        else:
-            # Encode the repetition of the current byte.
-            output[output_offset:output_offset + 2] = b"%c%c" % (257 - count, current)
+        if repeat_char:
+            output[output_offset:output_offset + 2] = (
+                b"%c%c" % (257 - len(repeat_char), repeat_char[0])
+            )
+            input_offset += len(repeat_char)
             output_offset += 2
+        else:
+            output[output_offset:output_offset + len(different_chars) + 1] = (
+                b"%c%s" % (len(different_chars) - 1, different_chars)
+            )
+            input_offset += len(different_chars)
+            output_offset += len(different_chars) + 1
 
     return bytes(output[:output_offset])
 
