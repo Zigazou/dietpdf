@@ -12,37 +12,32 @@ from .PDFItem import PDFItem
 # Hints when there is no need to insert a space between two items when encoding.
 NO_SPACE = {
     "": [
-        "PDFNull", "PDFCommand", "PDFList", "PDFList", "PDFName",
+        "PDFNull", "PDFCommand", "PDFList", "PDFName", "PDFDictionary",
         "PDFString", "PDFHexString", "PDFReference", "PDFNumber"
     ],
     "PDFNumber": [
-        "PDFCommand", "PDFNull", "PDFList", "PDFList", "PDFName",
-        "PDFString", "PDFHexString",
+        "PDFList", "PDFName", "PDFString", "PDFHexString", "PDFDictionary"
     ],
     "PDFList": [
-        "PDFNull", "PDFCommand", "PDFList", "PDFList", "PDFName",
-        "PDFString", "PDFHexString", "PDFReference", "PDFNumber"
-    ],
-    "PDFList": [
-        "PDFNull", "PDFCommand", "PDFList", "PDFList", "PDFName",
+        "PDFNull", "PDFCommand", "PDFList", "PDFName", "PDFDictionary",
         "PDFString", "PDFHexString", "PDFReference", "PDFNumber"
     ],
     "PDFString": [
-        "PDFNull", "PDFCommand", "PDFList", "PDFList", "PDFName",
+        "PDFNull", "PDFCommand", "PDFList", "PDFName",
         "PDFString", "PDFHexString", "PDFReference", "PDFNumber"
     ],
     "PDFHexString": [
-        "PDFNull", "PDFCommand", "PDFList", "PDFList", "PDFName",
+        "PDFNull", "PDFCommand", "PDFList", "PDFName", "PDFDictionary",
         "PDFString", "PDFHexString", "PDFReference", "PDFNumber"
     ],
     "PDFName": [
-        "PDFList", "PDFList", "PDFName", "PDFString", "PDFHexString",
+        "PDFList", "PDFName", "PDFString", "PDFHexString", "PDFDictionary"
     ],
     "PDFCommand": [
-        "PDFList", "PDFList", "PDFName", "PDFString", "PDFHexString",
+        "PDFList", "PDFName", "PDFString", "PDFHexString", "PDFDictionary"
     ],
     "PDFNull": [
-        "PDFList", "PDFList", "PDFName", "PDFString", "PDFHexString",
+        "PDFList", "PDFName", "PDFString", "PDFHexString", "PDFDictionary"
     ],
 }
 
