@@ -23,12 +23,15 @@ NO_SPACE = {
         "PDFString", "PDFHexString", "PDFReference", "PDFNumber"
     ],
     "PDFString": [
-        "PDFNull", "PDFCommand", "PDFList", "PDFName",
+        "PDFNull", "PDFCommand", "PDFList", "PDFName", "PDFDictionary",
         "PDFString", "PDFHexString", "PDFReference", "PDFNumber"
     ],
     "PDFHexString": [
         "PDFNull", "PDFCommand", "PDFList", "PDFName", "PDFDictionary",
         "PDFString", "PDFHexString", "PDFReference", "PDFNumber"
+    ],
+    "PDFReference": [
+        "PDFList", "PDFName", "PDFString", "PDFHexString", "PDFDictionary"
     ],
     "PDFName": [
         "PDFList", "PDFName", "PDFString", "PDFHexString", "PDFDictionary"
