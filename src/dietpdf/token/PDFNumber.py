@@ -63,12 +63,14 @@ class PDFNumber(PDFToken):
         else:
             # Smart float rounding.
             if self.value != 0.0:
-                for precision in range(2, 6):
+                for precision in range(2, 8):
                     float_rounded = round(self.value, precision)
                     if float_rounded != 0.0:
                         break
 
-                human = str(float_rounded)
+                human = "{:.9f}".format(float_rounded).rstrip("0")
+                if human[-1] == ".":
+                    human = human[:-1]
             else:
                 human = "0"
 
