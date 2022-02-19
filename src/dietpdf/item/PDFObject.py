@@ -269,6 +269,7 @@ class PDFObject(PDFItem):
         key_rle_decode = PDFName(b"RunLengthDecode")
         key_jbig2_decode = PDFName(b"JBIG2Decode")
         key_ascii85_decode = PDFName(b"ASCII85Decode")
+        key_ccittfax_decode = PDFName(b"CCITTFaxDecode")
 
         # Retrieve filter(s)
         filters = self[b"Filter"] if b"Filter" in self else []
@@ -293,6 +294,7 @@ class PDFObject(PDFItem):
         dctencoded = False
         jbig2encoded = False
         deflateencoded = False
+        ccittfaxencoded = False
         while index < len(filters.items):
             if filters.items[index] == key_flate_decode:
                 deflateencoded = True
@@ -320,6 +322,9 @@ class PDFObject(PDFItem):
             elif filters.items[index] == key_jbig2_decode:
                 jbig2encoded = True
                 index += 1
+            elif filters.items[index] == key_ccittfax_decode:
+                ccittfaxencoded = True
+                index += 1
             elif filters.items[index] == key_dct_decode:
                 dctencoded = True
                 stream = jpegtran_optimize(stream)
@@ -330,7 +335,7 @@ class PDFObject(PDFItem):
             else:
                 index += 1
 
-        if not dctencoded and not jbig2encoded:
+        if not dctencoded and not jbig2encoded and not ccittfaxencoded:
             if not columns and b"Width" in self.value:
                 columns = self.value[b"Width"]
 
@@ -370,7 +375,7 @@ class PDFObject(PDFItem):
         _logger.debug("Try Zopfli")
 
         # Compression has no gain.
-        if jbig2encoded or len(zopfli_stream) >= len(self.stream):
+        if ccittfaxencoded or jbig2encoded or len(zopfli_stream) >= len(self.stream):
             if dctencoded:
                 _logger.info(
                     "Best strategy for object %d stream = DCTENCODE" %
@@ -385,6 +390,11 @@ class PDFObject(PDFItem):
                 self.value[b"Filter"] = key_flate_decode
                 _logger.info(
                     "Best strategy for object %d stream = DEFLATE" %
+                    self.obj_num
+                )
+            elif ccittfaxencoded:
+                _logger.info(
+                    "Best strategy for object %d stream = CCITTFAX" %
                     self.obj_num
                 )
             else:
