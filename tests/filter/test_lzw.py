@@ -12,8 +12,8 @@ from dietpdf.filter.lzw import lzw_decode, lzw_encode
 def test_lzw_decode():
     seed(2022)
 
-    assert lzw_decode(b"\x80\x0B\x60\x50\x22\x0C\x0C\x85\x01") == b"EEEEEeEEEf"
-    assert lzw_encode(b"EEEEEeEEEf") == b"\x80\x0B\x60\x50\x22\x0C\x0C\x85\x01"
+    assert lzw_decode(b"\x80\x0B\x60\x50\x22\x0C\x0C\x85\x01") == b"-----A---B"
+    assert lzw_encode(b"-----A---B") == b"\x80\x0B\x60\x50\x22\x0C\x0C\x85\x01"
 
     assert lzw_decode(lzw_encode(b"Hello, World!")) == b"Hello, World!"
 

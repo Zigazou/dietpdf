@@ -11,6 +11,7 @@ from logging import getLogger
 
 from ..filter.zopfli import zopfli_deflate
 from ..filter.rle import rle_encode
+from ..filter.lzw import lzw_decode
 from ..filter.jpegoptim import jpegtran_optimize
 from ..filter.predictor import (
     PREDICTOR_NONE, predictor_png_decode,
@@ -213,8 +214,6 @@ class PDFObject(PDFItem):
                         "Unable to decode ASCII85 object %d stream" %
                         self.obj_num
                     )
-
-            """
             elif filter == b"LZWDecode":
                 try:
                     output = lzw_decode(output)
@@ -223,7 +222,6 @@ class PDFObject(PDFItem):
                         "Unable to decompress (LZW) object %d stream" %
                         self.obj_num
                     )
-                    """
 
             if type(parms) == PDFDictionary and b"Predictor" in parms:
                 columns = parms[b"Columns"].value
