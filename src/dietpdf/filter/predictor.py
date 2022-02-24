@@ -78,7 +78,7 @@ def paeth_predictor(left: int, above: int, upper_left: int) -> int:
     assert type(above) == int
     assert type(upper_left) == int
 
-    total = left + above + upper_left
+    total = left + above - upper_left
     dist_to_left = abs(total - left)
     dist_to_above = abs(total - above)
     dist_to_upper_left = abs(total - upper_left)
@@ -341,6 +341,7 @@ def predictor_png_best_encode(stream: bytes, columns: int, colors: int) -> bytes
             for column in range(columns * colors)
         ])
         current_row = current_row[colors:]
+        previous_row = previous_row[colors:]
 
         # Find most compressible predictor.
         compressed_rows = {
