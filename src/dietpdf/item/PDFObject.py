@@ -193,13 +193,14 @@ class PDFObject(PDFItem):
             if not isinstance(decode_parms, PDFList):
                 decode_parms = PDFList(decode_parms)
         except KeyError:
-            decode_parms = PDFList(PDFNull())
+            decode_parms = PDFList([PDFNull() for _ in filters])
 
         # Apply filters
         output = bytes(self.stream)
         for (filter, parms) in zip(filters, decode_parms):
             if filter == b"FlateDecode":
                 try:
+                    _logger.debug("Inflating")
                     output = decompress(output)
                 except:
                     raise Exception(
@@ -208,6 +209,7 @@ class PDFObject(PDFItem):
                     )
             elif filter == b"ASCII85Decode":
                 try:
+                    _logger.debug("ASCII85 decoding")
                     output = a85decode(output.strip(), adobe=True)
                 except:
                     raise Exception(
@@ -216,6 +218,7 @@ class PDFObject(PDFItem):
                     )
             elif filter == b"LZWDecode":
                 try:
+                    _logger.debug("LZW decoding")
                     output = lzw_decode(output)
                 except:
                     raise Exception(
@@ -256,9 +259,7 @@ class PDFObject(PDFItem):
 
         # Replacing line returns by space helps compression.
         if self.source_code:
-            _logger.debug(
-                "Optimize source code on object %d" % self.obj_num
-            )
+            _logger.debug("Optimize source code")
             stream = optimize_content_stream(stream)
 
         key_dct_decode = PDFName(b"DCTDecode")
@@ -325,6 +326,7 @@ class PDFObject(PDFItem):
                 index += 1
             elif filters.items[index] == key_dct_decode:
                 dctencoded = True
+                _logger.debug("Optimize JPEG")
                 stream = jpegtran_optimize(stream)
                 index += 1
             elif filters.items[index] == key_ascii85_decode:
@@ -342,6 +344,8 @@ class PDFObject(PDFItem):
                     colors = PDFNumber(3)
                 elif self.value[b"ColorSpace"] == PDFName(b"DeviceGray"):
                     colors = PDFNumber(1)
+                elif self.value[b"ColorSpace"] == PDFName(b"DeviceCMYK"):
+                    colors = PDFNumber(4)
 
         streams = {}
 
@@ -448,13 +452,11 @@ class PDFObject(PDFItem):
         else:
             self.value[b"Filter"] = filters
 
-        if len(decode_parms) == 1:
-            decode_parms = decode_parms[0]
-            if type(decode_parms) == PDFNull:
-                if b"DecodeParms" in self.value:
-                    self.value.delete(b"DecodeParms")
-            else:
-                self.value[b"DecodeParms"] = decode_parms
+        if decode_parms.is_null():
+            if b"DecodeParms" in self.value:
+                self.value.delete(b"DecodeParms")
+        elif len(decode_parms) == 1:
+            self.value[b"DecodeParms"] = decode_parms[0]
         else:
             self.value[b"DecodeParms"] = decode_parms
 

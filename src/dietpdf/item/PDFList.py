@@ -8,6 +8,7 @@ __email__ = "zigazou@protonmail.com"
 from ..token.PDFToken import PDFToken
 
 from .PDFItem import PDFItem
+from .PDFNull import PDFNull
 
 # Hints when there is no need to insert a space between two items when encoding.
 NO_SPACE = {
@@ -102,6 +103,13 @@ class PDFList(PDFItem):
 
     def __next__(self):
         return self.items.__next__()
+
+    def is_null(self) -> bool:
+        for item in self.items:
+            if type(item) != PDFNull:
+                return False
+
+        return True
 
     def encode(self) -> bytes:
         output = b"["
