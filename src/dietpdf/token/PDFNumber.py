@@ -11,13 +11,17 @@ from .PDFToken import PDFToken
 class PDFNumber(PDFToken):
     """A PDF number (either an integer or a float)"""
 
-    def __init__(self, value):
+    def __init__(self, value, precision=4):
+        assert type(precision) == int
+
         if type(value) == float or type(value) == int:
             self.value = value
         elif ord('.') in value:
             self.value = float(value)
         else:
             self.value = int(value)
+
+        self.precision = precision
 
     def __eq__(self, other):
         """Equality operator for PDFNumber.
@@ -54,6 +58,11 @@ class PDFNumber(PDFToken):
         """A PDFNumber is True if its value is not zero, False otherwise."""
         return self.value != None and float(self.value) != 0.0
 
+    def set_precision(self, precision: int):
+        assert type(precision) == int
+
+        self.precision = precision
+
     def pretty(self) -> str:
         return self._pretty("Number(%s)" % (self.value,))
 
@@ -63,7 +72,7 @@ class PDFNumber(PDFToken):
         else:
             # Smart float rounding.
             if self.value != 0.0:
-                for precision in range(2, 8):
+                for precision in range(self.precision, 8):
                     float_rounded = round(self.value, precision)
                     if float_rounded != 0.0:
                         break

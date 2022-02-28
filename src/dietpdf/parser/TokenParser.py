@@ -85,6 +85,38 @@ class TokenParser:
             re.DOTALL
         )
 
+        # First number is the precision, second number is the number of
+        # parameters.
+        self.operator_precision = {
+            b"cm": (4, 5),
+            b"d0": (2, 2),
+            b"d1": (2, 6),
+            b"G": (3, 1),
+            b"g": (3, 1),
+            b"RG": (3, 3),
+            b"rg": (3, 3),
+            b"K": (3, 4),
+            b"k": (3, 4),
+            b"i": (1, 1),
+            b"w": (2, 1),
+            b"m": (2, 2),
+            b"l": (2, 2),
+            b"c": (2, 6),
+            b"v": (2, 4),
+            b"y": (2, 4),
+            b"re": (2, 4),
+            b"SC": (3, 4),
+            b"SCN": (3, 4),
+            b"sc": (3, 4),
+            b"scn": (3, 4),
+            b"Td": (3, 2),
+            b"TD": (3, 2),
+            b"Tf": (2, 1),
+            b"Tc": (3, 1),
+            b"Tw": (3, 1),
+            b"Tm": (4, 6),
+        }
+
     def _parse_white_space(self):
         self.offset += 1
 
@@ -115,6 +147,17 @@ class TokenParser:
             self.offset = raw.span(0)[1]
         else:
             self.offset = sub.span(0)[1]
+
+            # Apply precision according to the command.
+            if word in self.operator_precision:
+                precision, update_count = self.operator_precision[word]
+                stack = self.processor.tokens.stack
+                for index in range(-2, -(update_count + 2), -1):
+                    if type(stack[index]) == PDFNumber:
+                        stack[index].set_precision(precision)
+                    else:
+                        break
+
 
     def _parse_name(self):
         sub = self.end_of_word.search(self.binary_data, self.offset + 1)
