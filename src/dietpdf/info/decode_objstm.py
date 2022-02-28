@@ -66,6 +66,26 @@ def convert_objstm(pdf: PDF):
     :param pdf: The PDF file for which to convert objects streams.
     :type pdf: PDF
     """
+
+    # Find objects without stream.
+    def any_object_without_stream(_, item):
+        if type(item) != PDFObject:
+            return False
+
+        if item.has_stream():
+            return False
+
+        if type(item.value) == PDFDictionary:
+            if b"Linearized" in item:
+                return False
+
+        return True
+
+    object_indices = {
+        item.obj_num: index 
+        for index, item in pdf.find(any_object_without_stream)
+    }
+
     # Decode Objects stream
     def any_objstm(_, item):
         return (
@@ -81,7 +101,15 @@ def convert_objstm(pdf: PDF):
         _logger.debug("Decoding object stream %d" % item.obj_num)
         objects = decode_objstm(item.decode_stream(), int(item[b"First"]))
         for object in objects:
-            pdf.push(object)
+            if object.obj_num in object_indices:
+                # Make sure the object won't replace a newer object version.
+                if object_indices[object.obj_num] < index:
+                    object_indices[object.obj_num] = index
+                    pdf.push(object)
+            else:
+                object_indices[object.obj_num] = index
+                pdf.push(object)
+
 
     # Remove the objects streams.
     to_remove.sort(reverse=True)
