@@ -12,7 +12,7 @@ from logging import getLogger
 from ..filter.zopfli import zopfli_deflate
 from ..filter.rle import rle_encode
 from ..filter.lzw import lzw_decode
-from ..filter.jpegoptim import jpegtran_optimize
+from ..filter.jpegoptim import jpegtran_optimize, jpeg_cmyk_to_rgb, jpeg_to_jpeg2000
 from ..filter.predictor import (
     PREDICTOR_NONE, predictor_png_decode,
     predictor_tiff_decode, predictor_png_best_encode,
@@ -267,6 +267,7 @@ class PDFObject(PDFItem):
         key_lzw_decode = PDFName(b"LZWDecode")
         key_rle_decode = PDFName(b"RunLengthDecode")
         key_jbig2_decode = PDFName(b"JBIG2Decode")
+        key_jpx_decode = PDFName(b"JPXDecode")
         key_ascii85_decode = PDFName(b"ASCII85Decode")
         key_ccittfax_decode = PDFName(b"CCITTFaxDecode")
 
@@ -291,6 +292,7 @@ class PDFObject(PDFItem):
         colors = None
         columns = None
         dctencoded = False
+        jpxencoded = False
         jbig2encoded = False
         deflateencoded = False
         ccittfaxencoded = False
@@ -324,18 +326,29 @@ class PDFObject(PDFItem):
             elif filters.items[index] == key_ccittfax_decode:
                 ccittfaxencoded = True
                 index += 1
+            elif filters.items[index] == key_jpx_decode:
+                jpxencoded = True
+                index += 1
             elif filters.items[index] == key_dct_decode:
                 dctencoded = True
-                _logger.debug("Optimize JPEG")
+
+                if b"ColorSpace" in self.value:
+                    if self.value[b"ColorSpace"] == PDFName(b"DeviceCMYK"):
+                        stream = jpeg_cmyk_to_rgb(stream)
+                        self.value[b"ColorSpace"] = PDFName(b"DeviceRGB")
+                        _logger.debug("Converted CMYK JPEG to RGB JPEG")
+                        colors = PDFNumber(3)
+
                 stream = jpegtran_optimize(stream)
                 index += 1
             elif filters.items[index] == key_ascii85_decode:
+                # Any ASCII85 encoded data has already been decoded.
                 filters.items.pop(index)
                 decode_parms.items.pop(index)
             else:
                 index += 1
 
-        if not dctencoded and not jbig2encoded and not ccittfaxencoded:
+        if not (jpxencoded or dctencoded or jbig2encoded or ccittfaxencoded):
             if not columns and b"Width" in self.value:
                 columns = self.value[b"Width"]
 
@@ -346,6 +359,27 @@ class PDFObject(PDFItem):
                     colors = PDFNumber(1)
                 elif self.value[b"ColorSpace"] == PDFName(b"DeviceCMYK"):
                     colors = PDFNumber(4)
+
+
+        # Compression is not supported for CCITTFax and JBig2.
+        if ccittfaxencoded or jbig2encoded:
+            if jbig2encoded:
+                _logger.info(
+                    "Best strategy for object %d stream = JBIG2ENCODE" %
+                    self.obj_num
+                )
+            elif ccittfaxencoded:
+                _logger.info(
+                    "Best strategy for object %d stream = CCITTFAX" %
+                    self.obj_num
+                )
+            else:
+                _logger.info(
+                    "Best strategy for object %d stream = NONE" %
+                    self.obj_num
+                )
+
+            return
 
         streams = {}
 
@@ -365,6 +399,14 @@ class PDFObject(PDFItem):
             except ValueError:
                 _logger.debug("Ignore PNG_AUTO predictor")
 
+        if dctencoded:
+            # Try a conversion of JPEG to JPEG 2000
+            jpeg2000 = jpeg_to_jpeg2000(stream)
+            if jpeg2000:
+                streams["JPX"] = jpeg2000
+
+            _logger.debug("Try JPEG2000")
+
         # Calculates compressed sizes for all predictors.
         (best_opt, best_size) = ("NONE", 2**32)
         for opt in streams:
@@ -372,31 +414,32 @@ class PDFObject(PDFItem):
             if size < best_size:
                 (best_opt, best_size) = (opt, size)
 
+        if best_opt == "JPX":
+            dctencoded = False
+            jpxencoded = True
+            filters.items[-1] = key_jpx_decode
+            decode_parms.items[-1] = PDFNull()
+
         # Find best optimization.
         zopfli_stream = zopfli_deflate(streams[best_opt])
         _logger.debug("Try Zopfli")
 
         # Compression has no gain.
-        if ccittfaxencoded or jbig2encoded or len(zopfli_stream) >= len(self.stream):
+        if len(zopfli_stream) >= len(self.stream):
             if dctencoded:
                 _logger.info(
                     "Best strategy for object %d stream = DCTENCODE" %
                     self.obj_num
                 )
-            elif jbig2encoded:
+            if jpxencoded:
                 _logger.info(
-                    "Best strategy for object %d stream = JBIG2ENCODE" %
+                    "Best strategy for object %d stream = JPXENCODE" %
                     self.obj_num
                 )
             elif deflateencoded:
                 self.value[b"Filter"] = key_flate_decode
                 _logger.info(
                     "Best strategy for object %d stream = DEFLATE" %
-                    self.obj_num
-                )
-            elif ccittfaxencoded:
-                _logger.info(
-                    "Best strategy for object %d stream = CCITTFAX" %
                     self.obj_num
                 )
             else:
@@ -409,8 +452,8 @@ class PDFObject(PDFItem):
 
         if dctencoded:
             best_strategy = "DCTENCODE+"
-        elif jbig2encoded:
-            best_strategy = "JBIG2ENCODE+"
+        if jpxencoded:
+            best_strategy = "JPXENCODE+"
         else:
             best_strategy = ""
 
