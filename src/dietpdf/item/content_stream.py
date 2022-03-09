@@ -30,12 +30,14 @@ def optimize_content_stream(stream: bytes) -> bytes:
 
     parser.parse(stream)
 
-    # Convert hexadecimal strings to strings.
-    def any_hexstring(_, item): return type(item) == PDFHexString
-    for index, _ in stack.tokens.find(any_hexstring):
-        stack.tokens.stack[index] = hexstring_to_string(
-            stack.tokens.stack[index]
-        )
+    # Convert hexadecimal strings to strings but not in character mappings
+    # because some readers do not like it.
+    if b"/CIDInit" not in stream:
+        def any_hexstring(_, item): return type(item) == PDFHexString
+        for index, _ in stack.tokens.find(any_hexstring):
+            stack.tokens.stack[index] = hexstring_to_string(
+                stack.tokens.stack[index]
+            )
 
     # The encode method will remove unnecessary spaces and convert any white
     # spaces including line returns into standard space.
