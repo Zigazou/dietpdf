@@ -152,16 +152,16 @@ def create_objstm(pdf: PDF) -> int:
         return True
 
     # Move objects without stream to the object stream.
-    objects = []
+    objects = {}
     to_remove = []
     for index, item in pdf.find(any_object_without_stream):
-        objects.append(item)
+        objects[item.obj_num] = item
         to_remove.append(index)
 
     to_remove.sort(reverse=True)
     for index in to_remove:
         pdf.pop(index)
 
-    pdf.push(PDFObjectStream(highest_object_number + 1, 0, objects))
+    pdf.push(PDFObjectStream(highest_object_number + 1, 0, list(objects.values())))
 
     return highest_object_number + 1

@@ -57,12 +57,12 @@ class PDFProcessor(TokenProcessor):
     def _generate_reference(self):
         gen_num = int(self.tokens.pop().value)
         obj_num = int(self.tokens.pop().value)
-        self.tokens.push(PDFReference(obj_num, gen_num))
+        self.tokens.push(PDFReference(obj_num, 0))
 
     def _generate_object_id(self):
         gen_num = int(self.tokens.pop().value)
         obj_num = int(self.tokens.pop().value)
-        self.tokens.push(PDFObjectID(obj_num, gen_num))
+        self.tokens.push(PDFObjectID(obj_num, 0))
 
     def _generate_list(self):
         items = []
@@ -247,33 +247,29 @@ class PDFProcessor(TokenProcessor):
 
             return True
 
-        def any_object_stream(_, item):
-            return type(item) == PDFObjectStream
-
         output = PDFComment(b"%PDF-1.7").encode()
         offset = len(output)
 
         # Write every object.
         xref_entries = {}
-        max_obj_num = 0
         for _, item in self.tokens.find(any_object):
             item.item_offset = offset
             xref_entries[item.obj_num] = (1, offset, 0)
-            max_obj_num = max(max_obj_num, item.obj_num)
 
             item_encoded = item.encode()
             offset += len(item_encoded)
             output += item_encoded
 
         # Write every object stream.
+        def any_object_stream(_, item):
+            return type(item) == PDFObjectStream
+
         for _, item in self.tokens.find(any_object_stream):
             index = 0
             xref_entries[item.obj_num] = (1, offset, 0)
-            max_obj_num = max(max_obj_num, item.obj_num)
 
             for object in item.objects:
                 xref_entries[object.obj_num] = (2, item.obj_num, index)
-                max_obj_num = max(max_obj_num, object.obj_num)
                 index += 1
 
             item_encoded = item.encode()
@@ -306,12 +302,13 @@ class PDFProcessor(TokenProcessor):
             trailer_root = old_trailer.dictionary[b"Root"]
 
         # Write the XRef stream.
-        references = {}
-        for index in range(max_obj_num + 1):
-            if index in xref_entries:
-                references[index] = xref_entries[index]
-            else:
-                references[index] = (0, 65535, 0)
+        max_obj_num = max(list(xref_entries.keys()))
+        references = {
+            index: (
+                xref_entries[index] if index in xref_entries else (0, 65535, 0)
+            )
+            for index in range(max_obj_num + 1)
+        }
 
         xrefstm = PDFXrefStream(max_obj_num + 1, 0, references)
         xrefstm.trailer_info = trailer_info
